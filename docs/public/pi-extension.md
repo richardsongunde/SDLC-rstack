@@ -24,7 +24,8 @@ The first RStack package is a native Pi extension, not an MCP server. MCP is use
 ## Tool flow
 
 ```text
-sdlc_start
+sdlc_orchestrate
+  -> sdlc_start
   -> sdlc_clarify
   -> sdlc_plan
   -> sdlc_build_next
@@ -63,7 +64,7 @@ If a project already has RStack/Claude-style assets under `.claude/`, the extens
 - `.claude/skills/**/SKILL.md`
 - `.claude/plugins/*/plugin.json`
 
-The extension does not expose every specialist as a separate tool. It uses the registry to recommend the right specialist context for each lifecycle task.
+The extension does not expose every specialist as a separate tool. It uses the registry to select specialist context for each lifecycle task, then embeds the selected `.claude/agents` markdown into the builder task packet. This matters in Pi because a `.claude/agents` folder by itself is not an executable subagent runtime.
 
 ## Install in Pi
 
@@ -93,15 +94,16 @@ Ask Pi something like:
 
 Then follow the lifecycle:
 
-1. Call `sdlc_start` with the goal.
-2. Call `sdlc_clarify` to capture product-owner decisions if the goal is ambiguous.
-3. Call `sdlc_plan` to create the delivery plan.
-4. Call `sdlc_build_next` to get the next builder task packet.
-5. Execute the task using normal coding tools.
-6. Write the required `builder.json` contract.
-7. Call `sdlc_validate`.
-8. Repeat until complete.
-9. Call `sdlc_memory` to record important learnings.
+1. Call `sdlc_orchestrate` with the goal to load RStack core agent instructions.
+2. Call `sdlc_start` with the goal.
+3. Call `sdlc_clarify` to capture product-owner decisions if the goal is ambiguous.
+4. Call `sdlc_plan` to create the delivery plan.
+5. Call `sdlc_build_next` to get the next builder task packet with embedded specialist instructions.
+6. Execute the task using normal coding tools.
+7. Write the required `builder.json` contract.
+8. Call `sdlc_validate`.
+9. Repeat until complete.
+10. Call `sdlc_memory` to record important learnings.
 
 ## Publishing note
 

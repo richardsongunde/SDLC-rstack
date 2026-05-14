@@ -64,6 +64,7 @@ Primary Pi tools:
 
 | Tool | Purpose |
 | --- | --- |
+| `sdlc_orchestrate` | Load RStack orchestrator, builder, and validator instructions into the active task before coding. |
 | `sdlc_start` | Start a clean `.rstack/runs/<run_id>/` lifecycle. |
 | `sdlc_clarify` | Capture product-owner answers before planning so RStack does not guess. |
 | `sdlc_plan` | Create requirements, lifecycle plan, and task graph with acceptance criteria and validation checks. |
@@ -105,6 +106,7 @@ Once public templates are curated, they can be added back to the package without
 - **Hook system** — `pre_tool_use.py` for dangerous-command detection, `post_tool_use.py` for validation, `ruff_validator.py` and `ty_validator.py` for Python lint and types, plus session lifecycle hooks.
 - **SDLC pipeline** — sequential agent chain from environment setup through deployment and summary, with optional security threat modeling, compliance checking, and cost estimation phases.
 - **Pi extension** — native Pi tools for clean `.rstack/runs/` state, clarification, planning, builder/validator contracts, status, and memory.
+- **Agent instruction loading** — `sdlc_orchestrate` and `sdlc_build_next` embed the actual `.claude/agents` markdown into task packets so Pi uses the RStack agents instead of merely naming them.
 - **Production operating standard** — shared evidence-first instructions for orchestrator, builder, validator, and SDLC stage agents.
 
 ## Team architecture

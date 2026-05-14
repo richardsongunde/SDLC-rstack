@@ -294,11 +294,66 @@ function selectRegistry(registry: RegistryItem[], domains: string[], limit = 6):
   return scored.filter((entry) => entry.score > 0).sort((a, b) => b.score - a.score).slice(0, limit).map((entry) => entry.item);
 }
 
-function builderPrompt(task: any, selected: RegistryItem[]): string {
-  return `# RStack Builder Task: ${task.title}\n\nYou are acting as the builder team for this bounded SDLC task. Follow .claude/agents/OPERATING-STANDARD.md when available.\n\n## Scope\n${task.description}\n\n## Acceptance criteria\n${(task.acceptance_criteria || []).map((item: string) => `- ${item}`).join("\n") || "- Meet the task description without scope creep."}\n\n## Validation checklist\n${(task.validation_checks || []).map((item: string) => `- ${item}`).join("\n") || "- Provide evidence for every claim."}\n\n## Artifact target\nWrite stage artifacts under: ${task.artifact_path}\n\n## Rules\n- Make only the changes needed for this task.\n- If requirements are ambiguous, stop and report NEEDS_CONTEXT in the summary.\n- If the existing code appears unrelated or broken beyond this task, stop and report BLOCKED.\n- Run relevant checks before marking the task complete.\n- Write the builder contract to ${task.output_dir}/builder.json.\n\n## Recommended specialists to load\n${selected.map((item) => `- ${item.kind}: ${item.name} (${item.path})`).join("\n") || "- No specialist registry entries found. Use general engineering judgment."}\n\n## Builder contract\n\`\`\`json\n{\n  "task_id": "${task.id}",\n  "agent": "builder",\n  "status": "PASS|FAIL|BLOCKED|DONE_WITH_CONCERNS",\n  "summary": "",\n  "files_modified": [],\n  "tests_run": [],\n  "risks": [],\n  "next_steps": []\n}\n\`\`\`\n`;
+function stripFrontmatter(raw: string): string {
+  if (!raw.startsWith("---")) return raw.trim();
+  const end = raw.indexOf("\n---", 3);
+  return end === -1 ? raw.trim() : raw.slice(end + 4).trim();
+}
+
+function truncateText(text: string, maxChars = 9000): string {
+  if (text.length <= maxChars) return text;
+  return `${text.slice(0, maxChars)}\n\n[Truncated by RStack to keep context bounded]`;
+}
+
+async function readProjectFile(projectRoot: string, relPath: string, maxChars = 9000): Promise<string> {
+  const path = join(projectRoot, relPath);
+  if (!existsSync(path)) return "";
+  return truncateText(stripFrontmatter(await readFile(path, "utf8")), maxChars);
+}
+
+async function agentContext(projectRoot: string, selected: RegistryItem[], maxPerItem = 6000): Promise<string> {
+  const blocks = [];
+  for (const item of selected) {
+    const body = await readProjectFile(projectRoot, item.path, maxPerItem);
+    if (!body) continue;
+    blocks.push(`## ${item.kind}: ${item.name}\nPath: ${item.path}\n\n${body}`);
+  }
+  return blocks.join("\n\n---\n\n");
+}
+
+async function coreAgentContext(projectRoot: string): Promise<string> {
+  const paths = [
+    ".claude/agents/OPERATING-STANDARD.md",
+    ".claude/agents/core/orchestrator.md",
+    ".claude/agents/core/builder.md",
+    ".claude/agents/core/validator.md",
+  ];
+  const blocks = [];
+  for (const path of paths) {
+    const body = await readProjectFile(projectRoot, path, 7000);
+    if (body) blocks.push(`## ${path}\n\n${body}`);
+  }
+  return blocks.join("\n\n---\n\n");
+}
+
+async function builderPrompt(projectRoot: string, task: any, selected: RegistryItem[]): Promise<string> {
+  const core = await coreAgentContext(projectRoot);
+  const specialists = await agentContext(projectRoot, selected);
+  return `# RStack Builder Task: ${task.title}\n\nYou are not a generic coding assistant for this task. You are running the RStack agent stack. Follow the embedded orchestrator, builder, validator, and specialist instructions below.\n\n## Embedded RStack core instructions\n${core || "Core agent files not found. Continue with the RStack contract."}\n\n## Scope\n${task.description}\n\n## Acceptance criteria\n${(task.acceptance_criteria || []).map((item: string) => `- ${item}`).join("\n") || "- Meet the task description without scope creep."}\n\n## Validation checklist\n${(task.validation_checks || []).map((item: string) => `- ${item}`).join("\n") || "- Provide evidence for every claim."}\n\n## Artifact target\nWrite stage artifacts under: ${task.artifact_path}\n\n## Rules\n- Make only the changes needed for this task.\n- If requirements are ambiguous, stop and report NEEDS_CONTEXT in the summary.\n- If the existing code appears unrelated or broken beyond this task, stop and report BLOCKED.\n- Run relevant checks before marking the task complete.\n- Write the builder contract to ${task.output_dir}/builder.json.\n\n## Selected specialist instructions loaded by RStack\n${specialists || selected.map((item) => `- ${item.kind}: ${item.name} (${item.path})`).join("\n") || "No specialist registry entries found. Use general engineering judgment."}\n\n## Builder contract\n\`\`\`json\n{\n  "task_id": "${task.id}",\n  "agent": "builder",\n  "status": "PASS|FAIL|BLOCKED|DONE_WITH_CONCERNS",\n  "summary": "",\n  "files_modified": [],\n  "tests_run": [],\n  "risks": [],\n  "next_steps": []\n}\n\`\`\`\n`;
+}
+
+async function orchestratorPacket(projectRoot: string, goal?: string): Promise<string> {
+  const core = await coreAgentContext(projectRoot);
+  return `# RStack Orchestrator Activated\n\nGoal: ${goal || "active user request"}\n\nThe RStack agents are stored under .claude/agents. Pi does not automatically execute Claude Code subagents from that folder, so this extension injects their instructions into the active turn and into every task packet.\n\n## Required operating model\n1. Act as orchestrator first. Do not jump straight to coding.\n2. Use sdlc_start, sdlc_clarify if needed, sdlc_plan, sdlc_build_next, sdlc_validate, and sdlc_status.\n3. Treat selected agent markdown as binding instructions.\n4. Builder writes builder.json. Validator writes validation.json.\n5. Never claim DONE without command evidence.\n\n## Embedded core agent instructions\n${core}`;
 }
 
 export default function (pi: ExtensionAPI) {
+  pi.on("resources_discover", async () => {
+    const projectRoot = findProjectRoot();
+    const skillRoot = join(projectRoot, ".claude", "skills");
+    return existsSync(skillRoot) ? { skillPaths: [skillRoot] } : undefined;
+  });
+
   pi.on("session_start", async (_event, ctx) => {
     const projectRoot = findProjectRoot();
     await mkdir(rstackDir(projectRoot), { recursive: true });
@@ -306,10 +361,32 @@ export default function (pi: ExtensionAPI) {
     ctx.ui.setStatus("rstack", "RStack SDLC ready");
   });
 
+  pi.on("before_agent_start", async (event) => {
+    const projectRoot = findProjectRoot();
+    const text = event.prompt.toLowerCase();
+    if (!/(^|\b)(rstack|sdlc|agent stack|orchestrator|builder team|validator team)(\b|$)/.test(text)) return undefined;
+    const packet = await orchestratorPacket(projectRoot, event.prompt);
+    return { systemPrompt: `${event.systemPrompt}\n\n${packet}` };
+  });
+
   pi.on("session_shutdown", async () => {
     const projectRoot = findProjectRoot();
     const id = await latestRun(projectRoot);
     if (id) await appendEvent(projectRoot, id, { type: "session_shutdown" });
+  });
+
+  pi.registerTool({
+    name: "sdlc_orchestrate",
+    label: "RStack Orchestrate",
+    description: "Load the RStack orchestrator, builder, and validator agent instructions into the active task. Use this before coding with RStack.",
+    parameters: Type.Object({
+      goal: Type.Optional(Type.String({ description: "Goal to orchestrate." })),
+    }),
+    async execute(_id, params) {
+      const projectRoot = findProjectRoot();
+      const packet = await orchestratorPacket(projectRoot, params.goal);
+      return { content: [{ type: "text", text: packet }], details: { loaded: ["orchestrator", "builder", "validator"], project_root: projectRoot } };
+    },
   });
 
   pi.registerTool({
@@ -436,7 +513,7 @@ export default function (pi: ExtensionAPI) {
       task.status = "IN_PROGRESS";
       await writeFile(tasksPath, JSON.stringify(taskState, null, 2));
       const selected = registry.filter((item) => task.specialists?.includes(item.id));
-      const prompt = builderPrompt(task, selected);
+      const prompt = await builderPrompt(projectRoot, task, selected);
       await writeFile(join(projectRoot, task.output_dir, "prompt.md"), prompt);
       manifest.status = "IN_PROGRESS";
       await writeManifest(manifest);
@@ -572,7 +649,7 @@ export default function (pi: ExtensionAPI) {
   pi.registerCommand("sdlc", {
     description: "Show RStack SDLC extension guidance.",
     handler: async (_args, ctx) => {
-      ctx.ui.notify("RStack SDLC tools: sdlc_start → sdlc_clarify → sdlc_plan → sdlc_build_next → sdlc_validate → sdlc_status", "info");
+      ctx.ui.notify("RStack SDLC tools: sdlc_orchestrate → sdlc_start → sdlc_clarify → sdlc_plan → sdlc_build_next → sdlc_validate → sdlc_status", "info");
     },
   });
 }
