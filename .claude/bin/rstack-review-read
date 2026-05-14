@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# rstack-review-read — check if /code-review-pr ran on the current branch
+#
+# Usage: rstack-review-read
+#
+# Exit 0 + prints review entry JSON if review was run on this branch
+# Exit 1 + prints NO_REVIEW if no review found (used by ship skill as gate)
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+eval "$("$SCRIPT_DIR/rstack-slug" 2>/dev/null)" 2>/dev/null || SLUG="unknown"
+RSTACK_HOME="${RSTACK_HOME:-$HOME/.rstack}"
+
+BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
+REVIEW_FILE="$RSTACK_HOME/projects/$SLUG/review-log.jsonl"
+
+[ ! -f "$REVIEW_FILE" ] && { echo "NO_REVIEW"; exit 1; }
+
+# Find the most recent review entry for this branch
+RESULT=$(python3 -c "
+import json, sys
+
+branch = sys.argv[1]
+review_file = sys.argv[2]
+
+entries = []
+try:
+    with open(review_file) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                j = json.loads(line)
+                if j.get('branch') == branch:
+                    entries.append(j)
+            except Exception:
+                pass
+except Exception:
+    pass
+
+if entries:
+    # Most recent
+    entries.sort(key=lambda x: x.get('ts', ''), reverse=True)
+    print(json.dumps(entries[0]))
+else:
+    print('NO_REVIEW')
+    sys.exit(1)
+" "$BRANCH" "$REVIEW_FILE" 2>/dev/null) || { echo "NO_REVIEW"; exit 1; }
+
+echo "$RESULT"
+[ "$RESULT" = "NO_REVIEW" ] && exit 1 || exit 0

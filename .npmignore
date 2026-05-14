@@ -1,0 +1,39 @@
+# Source workspace — `templates/` is what ships, not the live `.claude/`
+.claude/
+
+# Workspace artifacts
+Protifolio-Richard/
+logs/
+.rstack/
+outputs/
+specs/
+docs/
+!docs/public/
+!docs/public/**
+
+# CI / repo metadata
+.github/
+.git/
+.gitignore
+
+# Logs & local state
+*.log
+*.tmp
+.DS_Store
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Editor
+.vscode/
+.idea/
+*.swp

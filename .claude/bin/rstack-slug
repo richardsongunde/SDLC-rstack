@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# rstack-slug — compute a stable project slug from the git remote URL
+# Usage: eval "$(rstack-slug)"  → sets SLUG variable
+# Or:    rstack-slug            → prints SLUG=... line
+#
+# The slug is used to namespace project-specific state in ~/.rstack/projects/
+set -euo pipefail
+
+REMOTE_URL=$(git remote get-url origin 2>/dev/null || true)
+
+if [ -z "$REMOTE_URL" ]; then
+  # No remote — use directory name
+  SLUG=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" | tr -cd 'a-zA-Z0-9._-')
+else
+  # Extract owner/repo from remote URL and convert to slug
+  SLUG=$(echo "$REMOTE_URL" | \
+    sed 's|.*[:/]\([^/]*/[^/]*\)\.git$|\1|;s|.*[:/]\([^/]*/[^/]*\)$|\1|' | \
+    tr '/' '-' | tr -cd 'a-zA-Z0-9._-')
+fi
+
+[ -z "${SLUG:-}" ] && SLUG="unknown"
+
+echo "SLUG=$SLUG"

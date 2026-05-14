@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# rstack-review-log — record that a review skill ran on the current branch
+#
+# Usage:
+#   rstack-review-log '{"skill":"code-review-pr","status":"clean","commit":"abc1234"}'
+#
+# Written by: skills/code-review-pr/SKILL.md after review completes
+# Read by: skills/ship/SKILL.md to check if review ran before ship
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+eval "$("$SCRIPT_DIR/rstack-slug" 2>/dev/null)" 2>/dev/null || SLUG="unknown"
+RSTACK_HOME="${RSTACK_HOME:-$HOME/.rstack}"
+mkdir -p "$RSTACK_HOME/projects/$SLUG"
+
+INPUT="${1:-}"
+[ -z "$INPUT" ] && { echo "Usage: rstack-review-log '<json>'" >&2; exit 1; }
+
+# Inject branch + timestamp
+BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
+TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+FINAL=$(python3 -c "
+import json, sys
+j = json.loads(sys.argv[1])
+j.setdefault('branch', sys.argv[2])
+j.setdefault('ts', sys.argv[3])
+print(json.dumps(j))
+" "$INPUT" "$BRANCH" "$TS" 2>/dev/null) || FINAL="$INPUT"
+
+echo "$FINAL" >> "$RSTACK_HOME/projects/$SLUG/review-log.jsonl"

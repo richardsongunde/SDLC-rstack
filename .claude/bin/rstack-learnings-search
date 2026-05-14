@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# rstack-learnings-search — search project learnings
+#
+# Usage:
+#   rstack-learnings-search                    — all learnings for current project
+#   rstack-learnings-search --limit 5          — most recent 5
+#   rstack-learnings-search --keyword "index"  — filter by keyword
+#   rstack-learnings-search --cross-project    — search all projects
+#
+# Output: JSON lines, most recent first (latest winner per key+type dedup)
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+eval "$("$SCRIPT_DIR/rstack-slug" 2>/dev/null)" 2>/dev/null || SLUG="unknown"
+RSTACK_HOME="${RSTACK_HOME:-$HOME/.rstack}"
+
+LIMIT=50
+KEYWORD=""
+CROSS_PROJECT=false
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --limit)     LIMIT="$2"; shift 2 ;;
+    --keyword)   KEYWORD="$2"; shift 2 ;;
+    --cross-project) CROSS_PROJECT=true; shift ;;
+    *) shift ;;
+  esac
+done
+
+# Collect files to search
+FILES=()
+if [ "$CROSS_PROJECT" = "true" ]; then
+  while IFS= read -r -d '' f; do FILES+=("$f"); done < <(find "$RSTACK_HOME/projects" -name "learnings.jsonl" -print0 2>/dev/null)
+else
+  LEARN_FILE="$RSTACK_HOME/projects/$SLUG/learnings.jsonl"
+  [ -f "$LEARN_FILE" ] && FILES+=("$LEARN_FILE")
+fi
+
+[ ${#FILES[@]} -eq 0 ] && exit 0
+
+# Concatenate, filter by keyword, deduplicate (latest per key+type), limit
+python3 << PYEOF
+import json, sys
+
+files = ${FILES[@]+"${FILES[@]}"}
+keyword = "$KEYWORD".lower()
+limit = $LIMIT
+
+all_lines = []
+for f in "$( IFS=$'\n'; echo "${FILES[*]}" )".strip().split('\n'):
+    f = f.strip()
+    if not f:
+        continue
+    try:
+        with open(f) as fh:
+            for line in fh:
+                line = line.strip()
+                if line:
+                    all_lines.append(line)
+    except Exception:
+        pass
+
+# Parse + filter
+parsed = []
+for line in all_lines:
+    try:
+        j = json.loads(line)
+        if keyword and keyword not in json.dumps(j).lower():
+            continue
+        parsed.append(j)
+    except Exception:
+        pass
+
+# Deduplicate: latest per (key, type) combination
+seen = {}
+for entry in reversed(parsed):  # reversed = oldest first, latest overwrites
+    dedup_key = (entry.get('key', ''), entry.get('type', ''))
+    seen[dedup_key] = entry
+
+# Sort by timestamp descending, apply limit
+results = sorted(seen.values(), key=lambda x: x.get('ts', ''), reverse=True)[:limit]
+
+for r in results:
+    print(json.dumps(r))
+PYEOF

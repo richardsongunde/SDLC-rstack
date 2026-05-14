@@ -1,0 +1,148 @@
+%% rstack SDLC Pipeline — full architecture
+%% Excalidraw-compatible: paste into Excalidraw → Mermaid to Diagram
+%% Source of truth: .claude/sdlc-pipeline.yml + .claude/agents/{core,sdlc,specialists}/
+
+flowchart TD
+    %% ============ ENTRY ============
+    User([Richardson / User Request]):::user
+    Orchestrator{{"agents/core/orchestrator.md<br/>Team Lead — decomposes &amp; routes"}}:::core
+    User --> Orchestrator
+
+    %% ============ PHASE 1: ANALYSIS (parallel) ============
+    subgraph P1["Phase 1 — Analysis (parallel)"]
+        direction LR
+        A00["00-environment.md<br/>Detect tools, env vars<br/><i>environment_report.json</i>"]:::sdlc
+        A01["01-transcript.md<br/>Parse meeting / brief<br/><i>transcript.json</i>"]:::sdlc
+    end
+
+    %% ============ PHASE 2: REQUIREMENTS ============
+    subgraph P2["Phase 2 — Requirements"]
+        A02["02-requirements.md<br/>Functional + NFR + user stories<br/><i>requirement_spec.json</i>"]:::sdlc
+    end
+
+    %% ============ PHASE 3: DOCS + PLANNING (parallel) ============
+    subgraph P3["Phase 3 — Documentation &amp; Planning (parallel)"]
+        direction LR
+        A03["03-documentation.md<br/>Glossary, stakeholder map<br/><i>documentation.json</i>"]:::sdlc
+        A04["04-planning.md<br/>WBS, milestones, risks<br/><i>plan.json</i>"]:::sdlc
+    end
+
+    %% ============ PHASE 4: TICKETING + DESIGN (parallel) ============
+    subgraph P4["Phase 4 — Ticketing &amp; Architecture (parallel)"]
+        direction LR
+        A05["05-jira.md<br/>Epics, stories, tasks<br/><i>jira_tickets.json</i>"]:::sdlc
+        A06["06-architecture.md<br/>Tech stack, schema, APIs<br/><i>system_design.json + HLD.md</i>"]:::sdlc
+    end
+
+    %% ============ PHASE 5: SECURITY (optional) ============
+    subgraph P5["Phase 5 — Security Threat Model (optional)"]
+        A12["12-security-threat-model.md<br/>STRIDE, mitigations<br/><i>threat_model.json</i>"]:::optional
+    end
+
+    %% ============ PHASE 6: IMPLEMENTATION ============
+    subgraph P6["Phase 6 — Code Generation"]
+        A07["07-code.md<br/>Working scaffolding, no pseudocode<br/><i>code_report.json</i>"]:::sdlc
+    end
+
+    %% ============ PHASE 7: QUALITY (parallel) ============
+    subgraph P7["Phase 7 — Quality (parallel)"]
+        direction LR
+        A08["08-testing.md<br/>Unit + integration + security<br/><i>test_report.json</i>"]:::sdlc
+        A13["13-compliance-checker.md<br/>GDPR / HIPAA / SOC 2 / PCI-DSS<br/><i>compliance_report.json</i>"]:::optional
+    end
+
+    %% ============ PHASE 8: DEPLOY ============
+    subgraph P8["Phase 8 — Deployment"]
+        A09["09-deployment.md<br/>Dockerfile, CI/CD, scripts<br/><i>deployment_report.json</i>"]:::sdlc
+    end
+
+    %% ============ PHASE 9: DELIVERY (sequential) ============
+    subgraph P9["Phase 9 — Delivery (sequential)"]
+        direction TB
+        A10["10-summary.md<br/>What was built, decisions, risks<br/><i>summary.json</i>"]:::sdlc
+        A14["14-cost-estimation.md<br/>Infra + dev + maintenance cost<br/><i>cost_estimate.json</i>"]:::optional
+        A11["11-feedback-loop.md<br/>Satisfaction, change requests<br/><i>feedback.json</i>"]:::sdlc
+        A10 --> A14 --> A11
+    end
+
+    %% ============ FLOW ============
+    Orchestrator ==> P1
+    P1 ==> P2
+    P2 ==> P3
+    P3 ==> P4
+    P4 -.optional.-> P5
+    P4 ==> P6
+    P5 -.-> P6
+    P6 ==> P7
+    P7 ==> P8
+    P8 ==> P9
+
+    %% ============ SPECIALIST POOL ============
+    subgraph SPEC["agents/specialists/ — 177 domain experts"]
+        direction LR
+        SBE["backend (49)<br/>API, frameworks, DB"]:::spec
+        SDE["devops (34)<br/>Cloud, CI/CD, K8s"]:::spec
+        SQA["qa (18)<br/>Tests, debug, review"]:::spec
+        SPR["product (19)<br/>PM, scrum, research"]:::spec
+        SDA["data (13)<br/>ML, pipelines, LLM"]:::spec
+        SDO["docs (13)<br/>Writing, diagrams"]:::spec
+        SSE["security (11)<br/>Audit, pentest, compliance"]:::spec
+        SFE["frontend (10)<br/>UI, React, design"]:::spec
+        SCR["crypto (10)<br/>Market, coin research"]:::spec
+    end
+
+    %% ============ BUILDER / VALIDATOR LOOP ============
+    subgraph CORE["Core Execution Loop (every SDLC stage)"]
+        direction LR
+        Builder["agents/core/builder.md<br/>Executes ONE task<br/>writes outputs/team_state/[task].json"]:::core
+        Validator["agents/core/validator.md<br/>Read-only verifier<br/>writes outputs/team_state/[task]_validation.json"]:::core
+        Builder -- "PASS / FAIL" --> Validator
+        Validator -- "FAIL → retry x2" --> Builder
+    end
+
+    Orchestrator -. delegates .-> SPEC
+    Orchestrator -. delegates .-> CORE
+    SPEC -. invoked by SDLC stages .-> P6
+
+    %% ============ HOOKS LAYER ============
+    subgraph HOOKS["hooks/ — fires on agent lifecycle"]
+        direction LR
+        H1["pre_tool_use.py<br/>blocks rm -rf, .env access"]:::hook
+        H2["post_tool_use.py + ruff + ty<br/>lint &amp; type-check Python writes"]:::hook
+        H3["session_start.py / session_end.py<br/>context load &amp; persist"]:::hook
+        H4["post_agent_contract_validator.py<br/>JSON contract enforcement"]:::hook
+    end
+
+    Builder -.fires.-> H1
+    Builder -.fires.-> H2
+    Validator -.fires.-> H4
+    Orchestrator -.fires.-> H3
+
+    %% ============ STATE STORE ============
+    State[("outputs/team_state/<br/>JSON handshake bus")]:::state
+    A00 -.writes.-> State
+    A01 -.writes.-> State
+    A02 -.writes.-> State
+    A03 -.writes.-> State
+    A04 -.writes.-> State
+    A05 -.writes.-> State
+    A06 -.writes.-> State
+    A07 -.writes.-> State
+    A08 -.writes.-> State
+    A09 -.writes.-> State
+    A10 -.writes.-> State
+    Builder -.r/w.-> State
+    Validator -.reads.-> State
+
+    %% ============ FINAL OUTPUT ============
+    P9 ==> Delivered([Shipped artifacts<br/>code + tests + Dockerfile + CI/CD<br/>+ summary + cost + feedback]):::done
+
+    %% ============ STYLING ============
+    classDef user fill:#1e293b,stroke:#475569,color:#f8fafc,stroke-width:2px
+    classDef core fill:#7c3aed,stroke:#a855f7,color:#fff,stroke-width:2px
+    classDef sdlc fill:#0ea5e9,stroke:#0369a1,color:#fff,stroke-width:1px
+    classDef optional fill:#f59e0b,stroke:#b45309,color:#fff,stroke-dasharray:5 3
+    classDef spec fill:#10b981,stroke:#047857,color:#fff
+    classDef hook fill:#ef4444,stroke:#991b1b,color:#fff
+    classDef state fill:#facc15,stroke:#a16207,color:#1f2937
+    classDef done fill:#16a34a,stroke:#14532d,color:#fff,stroke-width:3px

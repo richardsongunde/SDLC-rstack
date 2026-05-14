@@ -1,0 +1,33 @@
+# dependencies
+node_modules/
+
+# runtime state and generated outputs
+.rstack/
+outputs/
+logs/
+*.log
+
+# local/private agent runtime noise
+.claude/logs/
+.claude/agents/logs/
+.codex/
+.agents/
+
+# secrets and local env
+.env
+.env.*
+!.env.example
+*auth.json
+*.pem
+*.key
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/
+
+# package artifacts
+*.tgz
+
+# backups
+.claude/_backups/

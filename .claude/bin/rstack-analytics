@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# rstack-analytics — append a skill usage event to local analytics
+#
+# Usage:
+#   rstack-analytics --skill investigate --duration 47 --outcome success
+#
+# Written by skill preambles at the end of each workflow.
+# Storage: ~/.rstack/analytics/skill-usage.jsonl (local only, never sent anywhere)
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+eval "$("$SCRIPT_DIR/rstack-slug" 2>/dev/null)" 2>/dev/null || SLUG="unknown"
+RSTACK_HOME="${RSTACK_HOME:-$HOME/.rstack}"
+
+# Check analytics setting
+ANALYTICS=$("$SCRIPT_DIR/rstack-config" get analytics 2>/dev/null || echo "local")
+[ "$ANALYTICS" = "off" ] && exit 0
+
+mkdir -p "$RSTACK_HOME/analytics"
+
+SKILL=""
+DURATION=""
+OUTCOME="unknown"
+BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
+TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --skill)    SKILL="$2"; shift 2 ;;
+    --duration) DURATION="$2"; shift 2 ;;
+    --outcome)  OUTCOME="$2"; shift 2 ;;
+    *) shift ;;
+  esac
+done
+
+[ -z "$SKILL" ] && { echo "Usage: rstack-analytics --skill <name> [--duration <s>] [--outcome <success|error|abort>]" >&2; exit 1; }
+
+python3 -c "
+import json, sys
+entry = {
+    'skill': sys.argv[1],
+    'outcome': sys.argv[2],
+    'branch': sys.argv[3],
+    'project': sys.argv[4],
+    'ts': sys.argv[5],
+}
+if sys.argv[6]:
+    entry['duration_s'] = int(sys.argv[6])
+print(json.dumps(entry))
+" "$SKILL" "$OUTCOME" "$BRANCH" "$SLUG" "$TS" "${DURATION:-}" >> "$RSTACK_HOME/analytics/skill-usage.jsonl"

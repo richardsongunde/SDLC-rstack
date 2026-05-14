@@ -1,0 +1,109 @@
+name: Validate Agent Definitions
+
+on:
+  push:
+    paths:
+      - ".claude/agents/**"
+      - ".claude/hooks/**"
+  pull_request:
+    paths:
+      - ".claude/agents/**"
+      - ".claude/hooks/**"
+
+jobs:
+  validate:
+    name: Validate agent frontmatter
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Validate agent definitions
+        run: |
+          node -e "
+          const fs = require('fs');
+          const path = require('path');
+
+          const AGENTS_DIR = '.claude/agents';
+          const NAME_REGEX = /^[a-z][a-z0-9-]*\$/;
+
+          if (!fs.existsSync(AGENTS_DIR)) {
+            console.error('Missing directory: ' + AGENTS_DIR);
+            process.exit(1);
+          }
+
+          function walk(dir) {
+            const out = [];
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory()) out.push(...walk(full));
+              else if (entry.isFile() && entry.name.endsWith('.md')) out.push(full);
+            }
+            return out;
+          }
+
+          function parseFrontmatter(text) {
+            if (!text.startsWith('---')) return null;
+            const parts = text.split(/^---\s*\$/m);
+            if (parts.length < 3) return null;
+            const block = parts[1];
+            const data = {};
+            for (const line of block.split(/\r?\n/)) {
+              const m = line.match(/^([A-Za-z0-9_-]+)\s*:\s*(.*)\$/);
+              if (!m) continue;
+              let v = m[2].trim();
+              if ((v.startsWith('\"') && v.endsWith('\"')) || (v.startsWith(\"'\") && v.endsWith(\"'\"))) {
+                v = v.slice(1, -1);
+              }
+              data[m[1]] = v;
+            }
+            return data;
+          }
+
+          const failures = [];
+          const seen = new Map();
+          const files = walk(AGENTS_DIR);
+
+          if (files.length === 0) {
+            console.error('No agent .md files found under ' + AGENTS_DIR);
+            process.exit(1);
+          }
+
+          for (const file of files) {
+            const text = fs.readFileSync(file, 'utf8');
+            const fm = parseFrontmatter(text);
+            if (!fm) {
+              failures.push(file + ': missing or unparseable frontmatter (expected leading --- block)');
+              continue;
+            }
+            if (!fm.name) {
+              failures.push(file + ': missing required field \"name\"');
+            }
+            if (!fm.description) {
+              failures.push(file + ': missing required field \"description\"');
+            }
+            if (fm.name && !NAME_REGEX.test(fm.name)) {
+              failures.push(file + ': invalid name \"' + fm.name + '\" (must match /^[a-z][a-z0-9-]*\$/)');
+            }
+            if (fm.name) {
+              if (seen.has(fm.name)) {
+                failures.push('Duplicate agent name \"' + fm.name + '\": ' + file + ' and ' + seen.get(fm.name));
+              } else {
+                seen.set(fm.name, file);
+              }
+            }
+          }
+
+          if (failures.length) {
+            console.error('Agent validation failed (' + failures.length + ' issue(s)):');
+            for (const f of failures) console.error('  - ' + f);
+            process.exit(1);
+          }
+
+          console.log('Validated ' + files.length + ' agent files across ' + seen.size + ' unique names. OK.');
+          "

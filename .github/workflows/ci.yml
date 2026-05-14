@@ -1,0 +1,134 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18.x, 20.x, 22.x]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: node --test tests/
+
+      - name: Validate agent frontmatter
+        run: node src/commands/validate.js
+
+  lint-agents:
+    name: Lint Agents and Hooks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Validate Python hook syntax
+        run: |
+          shopt -s nullglob
+          files=(.claude/hooks/scripts/*.py)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No Python hook scripts found in .claude/hooks/scripts/"
+            exit 0
+          fi
+          uv run python -m py_compile "${files[@]}"
+
+      - name: Validate agent frontmatter
+        run: |
+          node -e "
+          const fs = require('fs');
+          const path = require('path');
+
+          const AGENTS_DIR = '.claude/agents';
+          const NAME_REGEX = /^[a-z][a-z0-9-]*$/;
+
+          if (!fs.existsSync(AGENTS_DIR)) {
+            console.error('Missing directory: ' + AGENTS_DIR);
+            process.exit(1);
+          }
+
+          function walk(dir) {
+            const out = [];
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory()) out.push(...walk(full));
+              else if (entry.isFile() && entry.name.endsWith('.md')) out.push(full);
+            }
+            return out;
+          }
+
+          function parseFrontmatter(text) {
+            if (!text.startsWith('---')) return null;
+            const parts = text.split(/^---\s*$/m);
+            if (parts.length < 3) return null;
+            const block = parts[1];
+            const data = {};
+            for (const line of block.split(/\r?\n/)) {
+              const m = line.match(/^([A-Za-z0-9_-]+)\s*:\s*(.*)$/);
+              if (!m) continue;
+              let v = m[2].trim();
+              if ((v.startsWith('\"') && v.endsWith('\"')) || (v.startsWith(\"'\") && v.endsWith(\"'\"))) {
+                v = v.slice(1, -1);
+              }
+              data[m[1]] = v;
+            }
+            return data;
+          }
+
+          const failures = [];
+          const seen = new Map();
+          const files = walk(AGENTS_DIR);
+
+          for (const file of files) {
+            const text = fs.readFileSync(file, 'utf8');
+            const fm = parseFrontmatter(text);
+            if (!fm) {
+              failures.push(file + ': missing or unparseable frontmatter');
+              continue;
+            }
+            if (!fm.name) failures.push(file + ': missing name');
+            if (!fm.description) failures.push(file + ': missing description');
+            if (fm.name && !NAME_REGEX.test(fm.name)) {
+              failures.push(file + ': invalid name \"' + fm.name + '\" (must match /^[a-z][a-z0-9-]*\$/)');
+            }
+            if (fm.name) {
+              if (seen.has(fm.name)) {
+                failures.push('Duplicate name \"' + fm.name + '\" in ' + file + ' and ' + seen.get(fm.name));
+              } else {
+                seen.set(fm.name, file);
+              }
+            }
+          }
+
+          if (failures.length) {
+            console.error('Agent validation failed:');
+            for (const f of failures) console.error('  - ' + f);
+            process.exit(1);
+          }
+          console.log('Validated ' + files.length + ' agent files. OK.');
+          "
