@@ -1,10 +1,15 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { StringEnum } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
+import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, writeFile, appendFile } from "node:fs/promises";
 import { basename, dirname, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const RSTACK_VERSION = "0.2.0";
+const RSTACK_VERSION = "0.3.0";
+const EXTENSION_DIR = dirname(fileURLToPath(import.meta.url));
+const PACKAGE_ROOT = basename(EXTENSION_DIR) === "extensions" ? dirname(EXTENSION_DIR) : dirname(dirname(EXTENSION_DIR));
 
 type RegistryItem = {
   id: string;
@@ -25,6 +30,16 @@ type RunManifest = {
   status: "STARTED" | "CLARIFYING" | "PLANNED" | "IN_PROGRESS" | "BLOCKED" | "DONE";
   project_root: string;
   rstack_version: string;
+  traceability_path?: string;
+};
+
+type ApprovalRecord = {
+  id: string;
+  artifact: string;
+  status: "APPROVED" | "REJECTED" | "PENDING";
+  approver: string;
+  timestamp: string;
+  comments?: string;
 };
 
 type LifecycleStage = {
@@ -112,6 +127,17 @@ const lifecycleStages: LifecycleStage[] = [
   },
 ];
 
+const pipelineAgentRoutes: Record<string, string[]> = {
+  "001-product-clarification": ["agent.00-environment", "agent.01-transcript"],
+  "002-requirements": ["agent.02-requirements", "agent.04-planning", "agent.05-jira"],
+  "003-architecture": ["agent.06-architecture", "agent.12-security-threat-model", "agent.14-cost-estimation"],
+  "004-implementation": ["agent.07-code"],
+  "005-testing": ["agent.08-testing"],
+  "006-security-review": ["agent.12-security-threat-model", "agent.13-compliance-checker"],
+  "007-documentation": ["agent.03-documentation", "agent.10-summary"],
+  "008-release-readiness": ["agent.09-deployment", "agent.10-summary", "agent.11-feedback-loop"],
+};
+
 function slugify(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 64) || "sdlc-run";
 }
@@ -142,6 +168,58 @@ function memoryDir(projectRoot = findProjectRoot()): string {
 
 function registryDir(projectRoot = findProjectRoot()): string {
   return join(rstackDir(projectRoot), "registry");
+}
+
+function specsDir(runDir: string): string {
+  return join(runDir, "specs");
+}
+
+function approvalsPath(runDir: string): string {
+  return join(runDir, "approvals.json");
+}
+
+function packageAgentsDir(): string {
+  return join(PACKAGE_ROOT, "agents");
+}
+
+function packageSkillsDir(): string {
+  return join(PACKAGE_ROOT, "skills");
+}
+
+function packagePromptsDir(): string {
+  return join(PACKAGE_ROOT, "prompts");
+}
+
+function packagePluginsDir(): string {
+  return join(PACKAGE_ROOT, "plugins");
+}
+
+function projectAgentDirs(projectRoot = findProjectRoot()): string[] {
+  return [
+    join(projectRoot, ".rstack", "agents"),
+    join(projectRoot, ".pi", "rstack", "agents"),
+  ];
+}
+
+function projectSkillDirs(projectRoot = findProjectRoot()): string[] {
+  return [
+    join(projectRoot, ".rstack", "skills"),
+    join(projectRoot, ".pi", "rstack", "skills"),
+  ];
+}
+
+function projectPromptDirs(projectRoot = findProjectRoot()): string[] {
+  return [
+    join(projectRoot, ".rstack", "prompts"),
+    join(projectRoot, ".pi", "rstack", "prompts"),
+  ];
+}
+
+function projectPluginDirs(projectRoot = findProjectRoot()): string[] {
+  return [
+    join(projectRoot, ".rstack", "plugins"),
+    join(projectRoot, ".pi", "rstack", "plugins"),
+  ];
 }
 
 function parseFrontmatter(raw: string): Record<string, string> {
@@ -198,65 +276,89 @@ function inferStageAffinity(domains: string[]): string[] {
 }
 
 async function loadRegistry(projectRoot = findProjectRoot()): Promise<RegistryItem[]> {
-  const cached = join(registryDir(projectRoot), "registry.json");
-  if (existsSync(cached)) {
-    try { return JSON.parse(await readFile(cached, "utf8")); } catch {}
-  }
+  // Rebuild on demand so package-local agents and project overrides are always current.
   return buildRegistry(projectRoot);
 }
 
 async function buildRegistry(projectRoot = findProjectRoot()): Promise<RegistryItem[]> {
   const items: RegistryItem[] = [];
-  const agentFiles = await walk(join(projectRoot, ".claude", "agents"), (path) => path.endsWith(".md"));
-  for (const file of agentFiles) {
-    const raw = await readFile(file, "utf8");
-    const fm = parseFrontmatter(raw);
-    const rel = relative(projectRoot, file);
-    const name = fm.name || basename(file, ".md");
-    const domains = inferDomains(rel, `${name} ${fm.description || ""}`);
-    items.push({
-      id: `agent.${slugify(name)}`,
-      name,
-      kind: "agent",
-      path: rel,
-      description: fm.description,
-      domains,
-      stageAffinity: inferStageAffinity(domains),
-    });
+  const agentDirs = [packageAgentsDir(), ...projectAgentDirs(projectRoot)];
+  for (const dir of agentDirs) {
+    const agentFiles = await walk(dir, (path) => path.endsWith(".md"));
+    for (const file of agentFiles) {
+      const raw = await readFile(file, "utf8");
+      const fm = parseFrontmatter(raw);
+      const rel = file.startsWith(projectRoot) ? relative(projectRoot, file) : file;
+      const name = fm.name || basename(file, ".md");
+      const domains = inferDomains(rel, `${name} ${fm.description || ""}`);
+      const source = dir === packageAgentsDir() ? "package" : "project";
+      items.push({
+        id: `agent.${slugify(name)}`,
+        name,
+        kind: "agent",
+        path: rel,
+        description: fm.description,
+        domains: [...new Set([...domains, source])],
+        stageAffinity: inferStageAffinity(domains),
+      });
+    }
   }
 
-  const skillFiles = await walk(join(projectRoot, ".claude", "skills"), (path) => basename(path) === "SKILL.md");
-  for (const file of skillFiles) {
-    const raw = await readFile(file, "utf8");
-    const fm = parseFrontmatter(raw);
-    const rel = relative(projectRoot, file);
-    const name = fm.name || basename(dirname(file));
-    const domains = inferDomains(rel, `${name} ${fm.description || ""}`);
-    items.push({
-      id: `skill.${slugify(name)}`,
-      name,
-      kind: "skill",
-      path: rel,
-      description: fm.description,
-      domains,
-      stageAffinity: inferStageAffinity(domains),
-    });
+  const skillDirs = [packageSkillsDir(), ...projectSkillDirs(projectRoot)];
+  for (const dir of skillDirs) {
+    const skillFiles = await walk(dir, (path) => basename(path) === "SKILL.md");
+    for (const file of skillFiles) {
+      const raw = await readFile(file, "utf8");
+      const fm = parseFrontmatter(raw);
+      const rel = file.startsWith(projectRoot) ? relative(projectRoot, file) : file;
+      const name = fm.name || basename(dirname(file));
+      const domains = inferDomains(rel, `${name} ${fm.description || ""}`);
+      const source = dir === packageSkillsDir() ? "package" : "project";
+      items.push({
+        id: `skill.${slugify(name)}`,
+        name,
+        kind: "skill",
+        path: rel,
+        description: fm.description,
+        domains: [...new Set([...domains, source])],
+        stageAffinity: inferStageAffinity(domains),
+      });
+    }
   }
 
-  const pluginFiles = await walk(join(projectRoot, ".claude", "plugins"), (path) => basename(path) === "plugin.json");
-  for (const file of pluginFiles) {
-    const rel = relative(projectRoot, file);
-    try {
-      const plugin = JSON.parse(await readFile(file, "utf8"));
-      const name = plugin.name || basename(dirname(file));
-      const description = plugin.description || undefined;
-      const domains = inferDomains(rel, `${name} ${description || ""}`);
-      items.push({ id: `plugin.${slugify(name)}`, name, kind: "plugin", path: rel, description, domains, stageAffinity: inferStageAffinity(domains) });
-    } catch {}
+  const pluginDirs = [packagePluginsDir(), ...projectPluginDirs(projectRoot)];
+  for (const dir of pluginDirs) {
+    const pluginFiles = await walk(dir, (path) => basename(path) === "plugin.json");
+    for (const file of pluginFiles) {
+      const rel = file.startsWith(projectRoot) ? relative(projectRoot, file) : file;
+      try {
+        const plugin = JSON.parse(await readFile(file, "utf8"));
+        const name = plugin.name || basename(dirname(file));
+        const description = plugin.description || undefined;
+        const domains = inferDomains(rel, `${name} ${description || ""}`);
+        const source = dir === packagePluginsDir() ? "package" : "project";
+        items.push({ id: `plugin.${slugify(name)}`, name, kind: "plugin", path: rel, description, domains: [...new Set([...domains, source])], stageAffinity: inferStageAffinity(domains) });
+      } catch {}
+    }
   }
 
-  await mkdir(registryDir(projectRoot), { recursive: true });
-  await writeFile(join(registryDir(projectRoot), "registry.json"), JSON.stringify(items, null, 2));
+  const regDir = registryDir(projectRoot);
+  await mkdir(regDir, { recursive: true });
+  await writeFile(join(regDir, "registry.json"), JSON.stringify(items, null, 2));
+  await writeFile(join(regDir, "agents.json"), JSON.stringify(items.filter((item) => item.kind === "agent"), null, 2));
+  await writeFile(join(regDir, "skills.json"), JSON.stringify(items.filter((item) => item.kind === "skill"), null, 2));
+  await writeFile(join(regDir, "plugins.json"), JSON.stringify(items.filter((item) => item.kind === "plugin"), null, 2));
+  await writeFile(join(regDir, "routing.json"), JSON.stringify({
+    generated_at: timestamp(),
+    routes: items.map((item) => ({
+      id: item.id,
+      name: item.name,
+      kind: item.kind,
+      domains: item.domains,
+      stageAffinity: item.stageAffinity,
+      defaultTools: item.kind === "agent" ? defaultToolsForAgent(item.name) : []
+    }))
+  }, null, 2));
   return items;
 }
 
@@ -279,11 +381,75 @@ async function writeManifest(manifest: RunManifest): Promise<void> {
   manifest.updated_at = timestamp();
   const dir = join(runsDir(manifest.project_root), manifest.run_id);
   await mkdir(dir, { recursive: true });
+  if (!manifest.traceability_path) {
+    manifest.traceability_path = join(dir, "traceability.json");
+    if (!existsSync(manifest.traceability_path)) {
+      await writeFile(manifest.traceability_path, JSON.stringify({ run_id: manifest.run_id, mappings: [] }, null, 2));
+    }
+  }
   await writeFile(join(dir, "manifest.json"), JSON.stringify(manifest, null, 2));
+}
+
+async function addTrace(projectRoot: string, runId: string, mapping: any): Promise<void> {
+  const dir = join(runsDir(projectRoot), runId);
+  const path = join(dir, "traceability.json");
+  let trace = { run_id: runId, mappings: [] };
+  if (existsSync(path)) {
+    try {
+      trace = JSON.parse(await readFile(path, "utf8"));
+    } catch {}
+  }
+  (trace.mappings as any[]).push({ ts: timestamp(), ...mapping });
+  await writeFile(path, JSON.stringify(trace, null, 2));
 }
 
 async function appendEvent(projectRoot: string, id: string, event: Record<string, unknown>): Promise<void> {
   await appendFile(join(runsDir(projectRoot), id, "events.jsonl"), JSON.stringify({ ts: timestamp(), ...event }) + "\n");
+}
+
+async function readApprovals(runDir: string): Promise<ApprovalRecord[]> {
+  const path = approvalsPath(runDir);
+  if (!existsSync(path)) return [];
+  try {
+    const value = JSON.parse(await readFile(path, "utf8"));
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+}
+
+function approvedArtifacts(approvals: ApprovalRecord[]): Set<string> {
+  const latest = new Map<string, ApprovalRecord>();
+  for (const approval of approvals) latest.set(approval.artifact, approval);
+  return new Set([...latest.values()].filter((approval) => approval.status === "APPROVED").map((approval) => approval.artifact));
+}
+
+function requiredApprovalsForTask(taskId: string): string[] {
+  if (taskId >= "004-implementation") return ["plan.md", "requirements.json", "architecture.md"];
+  if (taskId >= "003-architecture") return ["plan.md", "requirements.json"];
+  return ["plan.md"];
+}
+
+function missingApprovals(approvals: ApprovalRecord[], required: string[]): string[] {
+  const approved = approvedArtifacts(approvals);
+  return required.filter((artifact) => !approved.has(artifact));
+}
+
+function initialSpecContent(stage: LifecycleStage, manifest: RunManifest): string {
+  const base = {
+    run_id: manifest.run_id,
+    goal: manifest.goal,
+    stage_id: stage.id,
+    title: stage.title,
+    status: "DRAFT",
+    description: stage.description,
+    acceptance_criteria: stage.acceptanceCriteria,
+    validation_checks: stage.validationChecks,
+    content: {},
+    approvals_required: true,
+  };
+  if (stage.artifact.endsWith(".json")) return `${JSON.stringify(base, null, 2)}\n`;
+  return `# RStack Spec: ${stage.title}\n\nGoal: ${manifest.goal}\n\nStage: ${stage.id}\nStatus: DRAFT\n\n## Description\n${stage.description}\n\n## Acceptance criteria\n${stage.acceptanceCriteria.map((item) => `- ${item}`).join("\n")}\n\n## Validation checks\n${stage.validationChecks.map((item) => `- ${item}`).join("\n")}\n\n## Content\n\n(To be populated by RStack agents and approved by the human owner.)\n`;
 }
 
 function selectRegistry(registry: RegistryItem[], domains: string[], limit = 6): RegistryItem[] {
@@ -306,15 +472,34 @@ function truncateText(text: string, maxChars = 9000): string {
 }
 
 async function readProjectFile(projectRoot: string, relPath: string, maxChars = 9000): Promise<string> {
-  const path = join(projectRoot, relPath);
+  const path = resolve(projectRoot, relPath);
   if (!existsSync(path)) return "";
   return truncateText(stripFrontmatter(await readFile(path, "utf8")), maxChars);
+}
+
+async function pluginPackContext(item: RegistryItem, maxChars = 6000): Promise<string> {
+  const manifest = await readProjectFile(findProjectRoot(), item.path, 2500);
+  const manifestPath = item.path.startsWith("/") ? item.path : join(findProjectRoot(), item.path);
+  const pluginRoot = dirname(manifestPath);
+  const assetFiles = await walk(pluginRoot, (path) => path.endsWith(".md"));
+  const relAssets = assetFiles.map((file) => relative(pluginRoot, file)).sort();
+  const preferred = relAssets.filter((file) => /^(agents|skills|commands)\//.test(file)).slice(0, 12);
+  const assetPreview = [];
+  for (const rel of preferred.slice(0, 4)) {
+    const body = await readProjectFile(pluginRoot, rel, 800);
+    if (body) assetPreview.push(`### ${rel}\n${body}`);
+  }
+  return truncateText([
+    `Manifest:\n${manifest}`,
+    relAssets.length ? `Available plugin assets:\n${relAssets.map((file) => `- ${file}`).join("\n")}` : "Available plugin assets: none discovered",
+    assetPreview.join("\n\n"),
+  ].filter(Boolean).join("\n\n"), maxChars);
 }
 
 async function agentContext(projectRoot: string, selected: RegistryItem[], maxPerItem = 6000): Promise<string> {
   const blocks = [];
   for (const item of selected) {
-    const body = await readProjectFile(projectRoot, item.path, maxPerItem);
+    const body = item.kind === "plugin" ? await pluginPackContext(item, maxPerItem) : await readProjectFile(projectRoot, item.path, maxPerItem);
     if (!body) continue;
     blocks.push(`## ${item.kind}: ${item.name}\nPath: ${item.path}\n\n${body}`);
   }
@@ -323,10 +508,10 @@ async function agentContext(projectRoot: string, selected: RegistryItem[], maxPe
 
 async function coreAgentContext(projectRoot: string): Promise<string> {
   const paths = [
-    ".claude/agents/OPERATING-STANDARD.md",
-    ".claude/agents/core/orchestrator.md",
-    ".claude/agents/core/builder.md",
-    ".claude/agents/core/validator.md",
+    join(packageAgentsDir(), "OPERATING-STANDARD.md"),
+    join(packageAgentsDir(), "core", "orchestrator.md"),
+    join(packageAgentsDir(), "core", "builder.md"),
+    join(packageAgentsDir(), "core", "validator.md"),
   ];
   const blocks = [];
   for (const path of paths) {
@@ -344,14 +529,93 @@ async function builderPrompt(projectRoot: string, task: any, selected: RegistryI
 
 async function orchestratorPacket(projectRoot: string, goal?: string): Promise<string> {
   const core = await coreAgentContext(projectRoot);
-  return `# RStack Orchestrator Activated\n\nGoal: ${goal || "active user request"}\n\nThe RStack agents are stored under .claude/agents. Pi does not automatically execute Claude Code subagents from that folder, so this extension injects their instructions into the active turn and into every task packet.\n\n## Required operating model\n1. Act as orchestrator first. Do not jump straight to coding.\n2. Use sdlc_start, sdlc_clarify if needed, sdlc_plan, sdlc_build_next, sdlc_validate, and sdlc_status.\n3. Treat selected agent markdown as binding instructions.\n4. Builder writes builder.json. Validator writes validation.json.\n5. Never claim DONE without command evidence.\n\n## Embedded core agent instructions\n${core}`;
+  return `# RStack Orchestrator Activated\n\nGoal: ${goal || "active user request"}\n\nRStack package-local agents live in ${packageAgentsDir()}. Project overrides may live in .rstack/agents or .pi/rstack/agents.\n\n## Required operating model\n1. Act as orchestrator first. Do not jump straight to coding.\n2. Use sdlc_start, sdlc_clarify if needed, sdlc_plan, sdlc_delegate, sdlc_build_next, sdlc_validate, and sdlc_status.\n3. Treat selected agent markdown as binding instructions.\n4. Builder writes builder.json. Validator writes validation.json.\n5. Never claim DONE without command evidence.\n\n## Embedded core agent instructions\n${core}`;
+}
+
+type DelegateTask = { agent: string; task: string; cwd?: string; tools?: string[] };
+
+function defaultToolsForAgent(agentName: string): string[] {
+  const lower = agentName.toLowerCase();
+  if (/(validator|review|qa|security|audit|tester|architect-reviewer)/.test(lower)) return ["read", "grep", "find", "ls", "bash"];
+  if (/(orchestrator|product|planning|requirements|docs|writer)/.test(lower)) return ["read", "grep", "find", "ls"];
+  return ["read", "bash", "edit", "write", "grep", "find", "ls"];
+}
+
+function piInvocation(args: string[]): { command: string; args: string[] } {
+  return { command: "pi", args };
+}
+
+function finalAssistantText(messages: any[]): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i];
+    if (message?.role !== "assistant") continue;
+    const text = message.content?.filter?.((part: any) => part.type === "text").map((part: any) => part.text).join("\n");
+    if (text) return text;
+  }
+  return "";
+}
+
+function isDestructiveBash(command: string): boolean {
+  return /\b(rm\s+-rf|git\s+push|npm\s+publish|terraform\s+(apply|destroy)|kubectl\s+(apply|delete|replace)|helm\s+(install|upgrade|uninstall)|docker\s+(rm|rmi|compose\s+down)|aws\s+cloudformation\s+delete|DROP\s+TABLE|DELETE\s+FROM)\b/i.test(command);
+}
+
+function protectedWritePath(pathValue: string): boolean {
+  return /(^|\/)(\.env|\.env\..*|id_rsa|id_ed25519|secrets?\.|credentials\.|\.npmrc|\.pypirc)(\/|$)/i.test(pathValue);
+}
+
+async function destructiveApprovalExists(projectRoot: string): Promise<boolean> {
+  const id = await latestRun(projectRoot);
+  if (!id) return false;
+  const approvals = await readApprovals(join(runsDir(projectRoot), id));
+  const approved = approvedArtifacts(approvals);
+  return approved.has("destructive-action") || approved.has("release-readiness.json");
+}
+
+async function runDelegateAgent(projectRoot: string, registry: RegistryItem[], task: DelegateTask, signal?: AbortSignal): Promise<any> {
+  const agent = registry.find((item) => item.kind === "agent" && item.name === task.agent) || registry.find((item) => item.kind === "agent" && item.id === task.agent);
+  if (!agent) throw new Error(`Unknown RStack agent: ${task.agent}`);
+  const agentBody = await readProjectFile(projectRoot, agent.path, 16000);
+  const tools = task.tools?.length ? task.tools : defaultToolsForAgent(agent.name);
+  const prompt = `# RStack delegated agent: ${agent.name}\n\n${agentBody}\n\n## Delegated task\n${task.task}\n\n## Contract\nReturn concise results with evidence, files read/changed, commands run, blockers, and next action.`;
+  const args = ["--mode", "json", "-p", "--no-session", "--tools", tools.join(","), prompt];
+  const invocation = piInvocation(args);
+  const messages: any[] = [];
+  let stderr = "";
+  const code = await new Promise<number>((resolveCode) => {
+    const proc = spawn(invocation.command, invocation.args, { cwd: task.cwd || projectRoot, stdio: ["ignore", "pipe", "pipe"] });
+    let buffer = "";
+    const processLine = (line: string) => {
+      if (!line.trim()) return;
+      try {
+        const event = JSON.parse(line);
+        if (event.type === "message_end" && event.message) messages.push(event.message);
+        if (event.type === "tool_result_end" && event.message) messages.push(event.message);
+      } catch {}
+    };
+    proc.stdout.on("data", (chunk) => {
+      buffer += chunk.toString();
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+      for (const line of lines) processLine(line);
+    });
+    proc.stderr.on("data", (chunk) => { stderr += chunk.toString(); });
+    proc.on("close", (exitCode) => { if (buffer.trim()) processLine(buffer); resolveCode(exitCode ?? 0); });
+    proc.on("error", () => resolveCode(1));
+    if (signal) {
+      const abort = () => proc.kill("SIGTERM");
+      if (signal.aborted) abort();
+      else signal.addEventListener("abort", abort, { once: true });
+    }
+  });
+  return { agent: agent.name, agent_id: agent.id, path: agent.path, tools, task: task.task, exit_code: code, output: finalAssistantText(messages), stderr, messages };
 }
 
 export default function (pi: ExtensionAPI) {
   pi.on("resources_discover", async () => {
     const projectRoot = findProjectRoot();
-    const skillRoot = join(projectRoot, ".claude", "skills");
-    return existsSync(skillRoot) ? { skillPaths: [skillRoot] } : undefined;
+    const skillPaths = [packageSkillsDir(), ...projectSkillDirs(projectRoot)].filter((path) => existsSync(path));
+    const promptPaths = [packagePromptsDir(), ...projectPromptDirs(projectRoot)].filter((path) => existsSync(path));
+    return skillPaths.length || promptPaths.length ? { skillPaths, promptPaths } : undefined;
   });
 
   pi.on("session_start", async (_event, ctx) => {
@@ -375,6 +639,123 @@ export default function (pi: ExtensionAPI) {
     if (id) await appendEvent(projectRoot, id, { type: "session_shutdown" });
   });
 
+  pi.on("tool_call", async (event: any) => {
+    const projectRoot = findProjectRoot();
+    const id = await latestRun(projectRoot);
+    if (id) await appendEvent(projectRoot, id, { type: "tool_call", tool: event.toolName, input: event.input });
+
+    if (process.env.RSTACK_ALLOW_DESTRUCTIVE === "1") return undefined;
+
+    if (event.toolName === "bash" && typeof event.input?.command === "string" && isDestructiveBash(event.input.command)) {
+      if (await destructiveApprovalExists(projectRoot)) return undefined;
+      return { block: true, reason: "RStack blocked a destructive shell command. Approve artifact 'destructive-action' with sdlc_approve or set RSTACK_ALLOW_DESTRUCTIVE=1." };
+    }
+
+    if (["write", "edit"].includes(event.toolName) && typeof event.input?.path === "string" && protectedWritePath(event.input.path)) {
+      if (await destructiveApprovalExists(projectRoot)) return undefined;
+      return { block: true, reason: "RStack blocked a write/edit to a protected secret or credential path. Approve 'destructive-action' with sdlc_approve to continue." };
+    }
+
+    return undefined;
+  });
+
+  pi.on("tool_result", async (event: any) => {
+    const projectRoot = findProjectRoot();
+    const id = await latestRun(projectRoot);
+    if (!id) return undefined;
+    const text = Array.isArray(event.content) ? event.content.map((part: any) => part?.text || "").join("\n") : "";
+    await appendEvent(projectRoot, id, { type: "tool_result", tool: event.toolName, isError: event.isError, summary: truncateText(text, 1200) });
+    return undefined;
+  });
+
+  pi.registerTool({
+    name: "sdlc_spec",
+    label: "RStack Spec Manager",
+    description: "Read or update a specific SDLC artifact (vision, requirements, architecture, etc.) in the run specs directory.",
+    parameters: Type.Object({
+      run_id: Type.Optional(Type.String()),
+      artifact: StringEnum([
+        "product-brief.md",
+        "requirements.json",
+        "architecture.md",
+        "implementation-report.json",
+        "qa-report.json",
+        "security-review.md",
+        "handoff.md",
+        "release-readiness.json"
+      ] as const),
+      action: StringEnum(["read", "update"] as const, { default: "read" }),
+      content: Type.Optional(Type.String({ description: "New content for the artifact when action=update." })),
+      trace_mapping: Type.Optional(Type.Object({}, { additionalProperties: true, description: "Traceability mapping (e.g. { requirement_id: 'R1', design_id: 'D1' })" }))
+    }),
+    async execute(_id, params) {
+      const projectRoot = findProjectRoot();
+      const manifest = await readManifest(projectRoot, params.run_id);
+      const runDir = join(runsDir(projectRoot), manifest.run_id);
+      const sDir = specsDir(runDir);
+      const path = join(sDir, params.artifact);
+
+      if (params.action === "update") {
+        if (params.content === undefined) throw new Error("content is required for update action");
+        await mkdir(sDir, { recursive: true });
+        await writeFile(path, params.content);
+        if (params.trace_mapping) {
+          await addTrace(projectRoot, manifest.run_id, {
+            type: "spec_update",
+            artifact: params.artifact,
+            ...params.trace_mapping
+          });
+        }
+        return { content: [{ type: "text", text: `Updated spec: ${params.artifact}` }], details: { artifact: params.artifact, path: relative(projectRoot, path), exists: true } };
+      }
+
+      const content = existsSync(path) ? await readFile(path, "utf8") : `Spec ${params.artifact} not found.`;
+      return { content: [{ type: "text", text: content }], details: { artifact: params.artifact, path: relative(projectRoot, path), exists: existsSync(path) } };
+    }
+  });
+
+  pi.registerTool({
+    name: "sdlc_approve",
+    label: "RStack Approval Gate",
+    description: "Capture human approval or rejection for a specific artifact or SDLC stage.",
+    parameters: Type.Object({
+      run_id: Type.Optional(Type.String()),
+      artifact: Type.String({ description: "The artifact or stage ID being approved (e.g. 'architecture.md' or '002-requirements')." }),
+      status: StringEnum(["APPROVED", "REJECTED"] as const),
+      comments: Type.Optional(Type.String()),
+      approver: Type.Optional(Type.String({ default: "human-user" }))
+    }),
+    async execute(_id, params) {
+      const projectRoot = findProjectRoot();
+      const manifest = await readManifest(projectRoot, params.run_id);
+      const runDir = join(runsDir(projectRoot), manifest.run_id);
+      const path = approvalsPath(runDir);
+
+      let approvals: ApprovalRecord[] = [];
+      if (existsSync(path)) {
+        try {
+          approvals = JSON.parse(await readFile(path, "utf8"));
+        } catch {}
+      }
+
+      const record: ApprovalRecord = {
+        id: `app-${timestamp().replace(/[:.]/g, "-")}`,
+        artifact: params.artifact,
+        status: params.status,
+        approver: params.approver || "human-user",
+        timestamp: timestamp(),
+        comments: params.comments
+      };
+
+      approvals.push(record);
+      await writeFile(path, JSON.stringify(approvals, null, 2));
+      await appendEvent(projectRoot, manifest.run_id, { type: "approval_gate", artifact: params.artifact, status: params.status });
+      await addTrace(projectRoot, manifest.run_id, { type: "approval", ...record });
+
+      return { content: [{ type: "text", text: `Approval ${params.status} for ${params.artifact}` }], details: record };
+    }
+  });
+
   pi.registerTool({
     name: "sdlc_orchestrate",
     label: "RStack Orchestrate",
@@ -395,7 +776,7 @@ export default function (pi: ExtensionAPI) {
     description: "Start a clean .rstack/runs lifecycle for building, testing, validating, and shipping software with agent teams.",
     parameters: Type.Object({
       goal: Type.String({ description: "Software goal, feature, app, bug fix, or release objective." }),
-      mode: Type.Optional(Type.Union([Type.Literal("interactive"), Type.Literal("express")], { default: "interactive" })),
+      mode: Type.Optional(StringEnum(["interactive", "express"] as const, { default: "interactive" })),
     }),
     async execute(_id, params) {
       const projectRoot = findProjectRoot();
@@ -414,6 +795,8 @@ export default function (pi: ExtensionAPI) {
         rstack_version: RSTACK_VERSION,
       };
       await writeManifest(manifest);
+      await mkdir(specsDir(dir), { recursive: true });
+      await writeFile(approvalsPath(dir), JSON.stringify([], null, 2));
       await writeFile(join(dir, "context.md"), `# RStack Run Context\n\nGoal: ${params.goal}\n\nMode: ${manifest.mode}\n\n## Product-owner notes\n\n`);
       await mkdir(join(dir, "artifacts"), { recursive: true });
       await appendEvent(projectRoot, id, { type: "run_started", goal: params.goal });
@@ -429,11 +812,11 @@ export default function (pi: ExtensionAPI) {
       run_id: Type.Optional(Type.String()),
       answers: Type.Optional(Type.Array(Type.String({ description: "Product-owner answers or decisions to append to context.md." }))),
     }),
-    async execute(_id, params) {
+    async execute(_id, params): Promise<any> {
       const projectRoot = findProjectRoot();
       const manifest = await readManifest(projectRoot, params.run_id);
       const runDir = join(runsDir(projectRoot), manifest.run_id);
-      const questions = [
+      const questions: string[] = [
         "Who is the primary user and what job are they trying to complete?",
         "What is the smallest release that would be useful in production?",
         "Which tech stack, existing repo conventions, or hosting target must RStack respect?",
@@ -445,13 +828,13 @@ export default function (pi: ExtensionAPI) {
         manifest.status = "CLARIFYING";
         await writeManifest(manifest);
         await appendEvent(projectRoot, manifest.run_id, { type: "clarification_answers_added", count: params.answers.length });
-        return { content: [{ type: "text", text: `Added ${params.answers.length} clarification answer(s) to ${relative(projectRoot, join(runDir, "context.md"))}. Next: call sdlc_plan.` }], details: { manifest, answers: params.answers } };
+        return { content: [{ type: "text", text: `Added ${params.answers.length} clarification answer(s) to ${relative(projectRoot, join(runDir, "context.md"))}. Next: call sdlc_plan.` }], details: { manifest, answers: params.answers, questions: [] } };
       }
       manifest.status = "CLARIFYING";
       await writeManifest(manifest);
       await appendEvent(projectRoot, manifest.run_id, { type: "clarification_requested", question_count: questions.length });
       const text = `Before planning, answer only what materially changes the build. Recommended questions:\n${questions.map((q, i) => `${i + 1}. ${q}`).join("\n")}\n\nCall sdlc_clarify again with answers, or call sdlc_plan if these are already clear.`;
-      return { content: [{ type: "text", text }], details: { manifest, questions } };
+      return { content: [{ type: "text", text }], details: { manifest, answers: [], questions } };
     },
   });
 
@@ -472,6 +855,8 @@ export default function (pi: ExtensionAPI) {
       const chosenDomains = params.domains?.length ? params.domains : ["product", "frontend", "backend", "qa", "security", "docs", "devops"];
       const tasks = lifecycleStages.map((stage) => {
         const outputDir = `.rstack/runs/${manifest.run_id}/tasks/${stage.id}`;
+        const pipelineAgents = pipelineAgentRoutes[stage.id] || [];
+        const routedSpecialists = selectRegistry(registry, [...stage.domains, ...chosenDomains], 5).map((item) => item.id);
         return {
           id: stage.id,
           title: stage.title,
@@ -482,14 +867,24 @@ export default function (pi: ExtensionAPI) {
           validation_checks: stage.validationChecks,
           artifact_path: `.rstack/runs/${manifest.run_id}/artifacts/${stage.artifact}`,
           output_dir: outputDir,
-          specialists: selectRegistry(registry, [...stage.domains, ...chosenDomains], 5).map((item) => item.id),
+          pipeline_agents: pipelineAgents,
+          specialists: [...new Set([...pipelineAgents, ...routedSpecialists])],
         };
       });
       for (const task of tasks) await mkdir(join(projectRoot, task.output_dir), { recursive: true });
       await mkdir(join(runDir, "artifacts"), { recursive: true });
-      const plan = `# RStack SDLC Plan\n\nGoal: ${manifest.goal}\n\nMode: ${manifest.mode}\n\n## Constraints\n${(params.constraints || ["Ask before destructive actions", "Validate before release", "Keep scope bounded", "Do not claim DONE without evidence", "Use .rstack/runs state, not legacy outputs/team_state"]).map((c) => `- ${c}`).join("\n")}\n\n## Lifecycle\n${tasks.map((t) => `- [ ] ${t.id}: ${t.title}\n  - Artifact: ${t.artifact_path}\n  - Acceptance: ${t.acceptance_criteria.join("; ")}`).join("\n")}\n\n## Operating model\n\nThe orchestrator creates bounded builder tasks. Validators check each task before the run advances. User approval is required for major product decisions, destructive changes, and release/merge actions.\n`;
+      const plan = `# RStack SDLC Plan\n\nGoal: ${manifest.goal}\n\nMode: ${manifest.mode}\n\n## Constraints\n${(params.constraints || ["Ask before destructive actions", "Validate before release", "Keep scope bounded", "Do not claim DONE without evidence", "Use .rstack/runs state, not legacy outputs/team_state"]).map((c) => `- ${c}`).join("\n")}\n\n## Lifecycle\n${tasks.map((t) => `- [ ] ${t.id}: ${t.title}\n  - Artifact: ${t.artifact_path}\n  - Pipeline agents: ${t.pipeline_agents.join(", ") || "none"}\n  - Acceptance: ${t.acceptance_criteria.join("; ")}`).join("\n")}\n\n## Operating model\n\nThe orchestrator creates bounded builder tasks. Validators check each task before the run advances. User approval is required for major product decisions, destructive changes, and release/merge actions.\n`;
       await writeFile(join(runDir, "plan.md"), plan);
       await writeFile(join(runDir, "tasks.json"), JSON.stringify({ run_id: manifest.run_id, tasks }, null, 2));
+      const sDir = specsDir(runDir);
+      await mkdir(sDir, { recursive: true });
+      for (const stage of lifecycleStages) {
+        const specPath = join(sDir, stage.artifact);
+        if (!existsSync(specPath)) {
+          await writeFile(specPath, initialSpecContent(stage, manifest));
+          await addTrace(projectRoot, manifest.run_id, { type: "spec_created", artifact: stage.artifact, stage_id: stage.id });
+        }
+      }
       manifest.status = "PLANNED";
       await writeManifest(manifest);
       await appendEvent(projectRoot, manifest.run_id, { type: "plan_created", task_count: tasks.length });
@@ -510,6 +905,16 @@ export default function (pi: ExtensionAPI) {
       const taskState = JSON.parse(await readFile(tasksPath, "utf8"));
       const task = taskState.tasks.find((t: any) => t.status === "PENDING" || t.status === "READY") || taskState.tasks.find((t: any) => t.status === "FAIL");
       if (!task) return { content: [{ type: "text", text: `No pending task for ${manifest.run_id}. Run sdlc_status or sdlc_validate for final checks.` }], details: taskState };
+      const runDir = join(runsDir(projectRoot), manifest.run_id);
+      const requiredApprovals = manifest.mode === "express" ? [] : requiredApprovalsForTask(task.id);
+      const missing = missingApprovals(await readApprovals(runDir), requiredApprovals);
+      if (missing.length) {
+        await appendEvent(projectRoot, manifest.run_id, { type: "approval_gate_blocked", task_id: task.id, missing });
+        return {
+          content: [{ type: "text", text: `Approval gate blocked ${task.id}. Missing approval(s): ${missing.join(", ")}\nUse sdlc_approve after human review, or start/run in express mode for lightweight tasks.` }],
+          details: { run_id: manifest.run_id, task, missing_approvals: missing, required_approvals: requiredApprovals }
+        };
+      }
       task.status = "IN_PROGRESS";
       await writeFile(tasksPath, JSON.stringify(taskState, null, 2));
       const selected = registry.filter((item) => task.specialists?.includes(item.id));
@@ -593,6 +998,77 @@ export default function (pi: ExtensionAPI) {
   });
 
   pi.registerTool({
+    name: "sdlc_agents",
+    label: "RStack Agents",
+    description: "List RStack package-local and project-local agents/skills by domain for routing and team assembly.",
+    parameters: Type.Object({
+      kind: Type.Optional(StringEnum(["agent", "skill", "plugin"] as const)),
+      domain: Type.Optional(Type.String()),
+      limit: Type.Optional(Type.Number({ default: 80 })),
+    }),
+    async execute(_id, params) {
+      const projectRoot = findProjectRoot();
+      const registry = await loadRegistry(projectRoot);
+      const limit = params.limit ?? 80;
+      const items = registry
+        .filter((item) => !params.kind || item.kind === params.kind)
+        .filter((item) => !params.domain || item.domains.includes(params.domain))
+        .slice(0, limit);
+      const counts = registry.reduce((acc: Record<string, number>, item) => {
+        const key = `${item.kind}`;
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {});
+      const text = [
+        `RStack registry: ${registry.length} item(s), ${JSON.stringify(counts)}`,
+        `Package root: ${PACKAGE_ROOT}`,
+        "",
+        ...items.map((item) => `- ${item.id}: ${item.name} [${item.domains.join(", ")}] ${item.path}`),
+      ].join("\n");
+      return { content: [{ type: "text", text }], details: { counts, items } };
+    },
+  });
+
+  pi.registerTool({
+    name: "sdlc_delegate",
+    label: "RStack Delegate",
+    description: "Spawn one or more RStack agents as isolated Pi subprocesses. Supports single or bounded parallel delegation. Validators default to read-only tools.",
+    parameters: Type.Object({
+      agent: Type.Optional(Type.String({ description: "Agent name or id for single mode." })),
+      task: Type.Optional(Type.String({ description: "Task for single mode." })),
+      tasks: Type.Optional(Type.Array(Type.Object({
+        agent: Type.String(),
+        task: Type.String(),
+        cwd: Type.Optional(Type.String()),
+        tools: Type.Optional(Type.Array(Type.String())),
+      }))),
+      concurrency: Type.Optional(Type.Number({ default: 3 })),
+    }),
+    async execute(_id, params, signal, onUpdate) {
+      const projectRoot = findProjectRoot();
+      const registry = await loadRegistry(projectRoot);
+      const tasks: DelegateTask[] = params.tasks?.length ? params.tasks : (params.agent && params.task ? [{ agent: params.agent, task: params.task }] : []);
+      if (tasks.length === 0) throw new Error("Provide either agent+task or tasks[].");
+      if (tasks.length > 8) throw new Error("sdlc_delegate allows at most 8 tasks per call.");
+      const concurrency = Math.max(1, Math.min(params.concurrency ?? 3, 4, tasks.length));
+      const results: any[] = new Array(tasks.length);
+      let next = 0;
+      let done = 0;
+      const workers = new Array(concurrency).fill(null).map(async () => {
+        while (next < tasks.length) {
+          const index = next++;
+          results[index] = await runDelegateAgent(projectRoot, registry, tasks[index], signal);
+          done++;
+          onUpdate?.({ content: [{ type: "text", text: `RStack delegation: ${done}/${tasks.length} complete` }], details: { results: results.filter(Boolean) } });
+        }
+      });
+      await Promise.all(workers);
+      const summary = results.map((result) => `## ${result.agent} (${result.exit_code})\n${result.output || result.stderr || "(no output)"}`).join("\n\n---\n\n");
+      return { content: [{ type: "text", text: summary }], details: { results } };
+    },
+  });
+
+  pi.registerTool({
     name: "sdlc_status",
     label: "RStack Status",
     description: "Show active RStack run status, task progress, registry counts, and next recommended action.",
@@ -605,15 +1081,19 @@ export default function (pi: ExtensionAPI) {
       const tasks = existsSync(tasksPath) ? JSON.parse(await readFile(tasksPath, "utf8")).tasks : [];
       const counts = tasks.reduce((acc: Record<string, number>, task: any) => { acc[task.status] = (acc[task.status] || 0) + 1; return acc; }, {});
       const next = tasks.find((t: any) => ["PENDING", "READY", "FAIL", "IN_PROGRESS"].includes(t.status));
-      if (tasks.length > 0 && !next && tasks.every((t: any) => t.status === "PASS")) {
+      const runDir = join(runsDir(projectRoot), manifest.run_id);
+      const approvals = await readApprovals(runDir);
+      const nextMissingApprovals = next && next.status !== "IN_PROGRESS" && manifest.mode !== "express" ? missingApprovals(approvals, requiredApprovalsForTask(next.id)) : [];
+      const releaseMissingApprovals = manifest.mode !== "express" ? missingApprovals(approvals, ["plan.md", "requirements.json", "architecture.md", "release-readiness.json"]) : [];
+      if (tasks.length > 0 && !next && tasks.every((t: any) => t.status === "PASS") && releaseMissingApprovals.length === 0) {
         manifest.status = "DONE";
         await writeManifest(manifest);
       }
       const recommended = next
-        ? next.status === "IN_PROGRESS" ? `Validate ${next.id} with sdlc_validate` : `Build ${next.id} with sdlc_build_next`
-        : manifest.status === "DONE" ? "Run final documentation/release handoff or sdlc_memory append" : "No pending tasks";
-      const text = [`Run: ${manifest.run_id}`, `Goal: ${manifest.goal}`, `Status: ${manifest.status}`, `Tasks: ${JSON.stringify(counts)}`, `Registry: ${registry.length} items`, `Next: ${recommended}`].join("\n");
-      return { content: [{ type: "text", text }], details: { manifest, counts, next, registry_count: registry.length, recommended } };
+        ? next.status === "IN_PROGRESS" ? `Validate ${next.id} with sdlc_validate` : nextMissingApprovals.length ? `Approve ${nextMissingApprovals.join(", ")} with sdlc_approve before building ${next.id}` : `Build ${next.id} with sdlc_build_next`
+        : releaseMissingApprovals.length ? `Approve release gate(s): ${releaseMissingApprovals.join(", ")}` : manifest.status === "DONE" ? "Run final documentation/release handoff or sdlc_memory append" : "No pending tasks";
+      const text = [`Run: ${manifest.run_id}`, `Goal: ${manifest.goal}`, `Status: ${manifest.status}`, `Tasks: ${JSON.stringify(counts)}`, `Registry: ${registry.length} items`, `Approvals: ${approvals.length} recorded`, `Next: ${recommended}`].join("\n");
+      return { content: [{ type: "text", text }], details: { manifest, counts, next, registry_count: registry.length, approvals, next_missing_approvals: nextMissingApprovals, release_missing_approvals: releaseMissingApprovals, recommended } };
     },
   });
 
@@ -622,7 +1102,7 @@ export default function (pi: ExtensionAPI) {
     label: "RStack Memory",
     description: "Search or append RStack project learnings used by future SDLC runs.",
     parameters: Type.Object({
-      action: Type.Union([Type.Literal("search"), Type.Literal("append"), Type.Literal("summarize")]),
+      action: StringEnum(["search", "append", "summarize"] as const),
       query: Type.Optional(Type.String()),
       learning: Type.Optional(Type.String({ description: "Learning text to append when action=append." })),
     }),
@@ -649,7 +1129,19 @@ export default function (pi: ExtensionAPI) {
   pi.registerCommand("sdlc", {
     description: "Show RStack SDLC extension guidance.",
     handler: async (_args, ctx) => {
-      ctx.ui.notify("RStack SDLC tools: sdlc_orchestrate → sdlc_start → sdlc_clarify → sdlc_plan → sdlc_build_next → sdlc_validate → sdlc_status", "info");
+      ctx.ui.notify("RStack SDLC tools: sdlc_orchestrate → sdlc_start → sdlc_clarify → sdlc_plan → sdlc_delegate → sdlc_build_next → sdlc_validate → sdlc_status", "info");
+    },
+  });
+
+  pi.registerCommand("sdlc-agents", {
+    description: "List RStack agent-team registry counts.",
+    handler: async (_args, ctx) => {
+      const registry = await loadRegistry(findProjectRoot());
+      const counts = registry.reduce((acc: Record<string, number>, item) => {
+        acc[item.kind] = (acc[item.kind] || 0) + 1;
+        return acc;
+      }, {});
+      ctx.ui.notify(`RStack registry: ${registry.length} items ${JSON.stringify(counts)}`, "info");
     },
   });
 }

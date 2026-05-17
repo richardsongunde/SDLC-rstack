@@ -1,7 +1,7 @@
 /**
  * `rstack-agents list <agents|skills|plugins>` and `rstack-agents add plugin <name>`.
  *
- * Reads from the local .claude/ directory in the current project.
+ * Reads from package-local publishable assets by default.
  */
 
 import path from 'node:path';
@@ -10,13 +10,14 @@ import { readdir, readFile, stat } from 'node:fs/promises';
 import fsExtra from 'fs-extra';
 import chalk from 'chalk';
 import { log } from '../utils/logger.js';
-import { copyTemplate } from '../utils/copy.js';
 
-const { pathExists, ensureDir } = fsExtra;
+const { pathExists, ensureDir, copy } = fsExtra;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PACKAGE_ROOT = path.resolve(__dirname, '..', '..');
-const TEMPLATE_DIR = path.join(PACKAGE_ROOT, 'templates', '.claude');
+const PACKAGE_AGENTS_DIR = path.join(PACKAGE_ROOT, 'agents');
+const PACKAGE_SKILLS_DIR = path.join(PACKAGE_ROOT, 'skills');
+const PACKAGE_PLUGINS_DIR = path.join(PACKAGE_ROOT, 'plugins');
 
 const DOMAIN_KEYWORDS = {
   core: ['orchestrator', 'builder', 'validator', 'planner', 'router', 'core'],
@@ -70,32 +71,33 @@ async function readAgentMeta(filePath) {
   }
 }
 
-function localClaudeDir() {
-  return path.join(process.cwd(), '.claude');
+async function listFilesRecursive(dir, predicate) {
+  if (!(await pathExists(dir))) return [];
+  const entries = await readdir(dir, { withFileTypes: true });
+  const out = [];
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...await listFilesRecursive(full, predicate));
+    else if (predicate(full)) out.push(full);
+  }
+  return out;
 }
 
-async function ensureClaudeInstalled() {
-  const dir = localClaudeDir();
-  if (!(await pathExists(dir))) {
-    throw new Error(`.claude/ not found in ${process.cwd()}. Run \`rstack-agents init\` first.`);
-  }
-  return dir;
+function localRstackDir() {
+  return path.join(process.cwd(), '.rstack');
 }
 
 export async function listAgents() {
-  const claudeDir = await ensureClaudeInstalled();
-  const agentsDir = path.join(claudeDir, 'agents');
-  if (!(await pathExists(agentsDir))) {
-    log.warn('No agents/ directory found.');
+  const mdFiles = await listFilesRecursive(PACKAGE_AGENTS_DIR, (file) => file.endsWith('.md'));
+  if (mdFiles.length === 0) {
+    log.warn('No package agents found.');
     return;
   }
-  const entries = await readdir(agentsDir);
-  const mdFiles = entries.filter((e) => e.endsWith('.md'));
 
   const grouped = {};
   for (const file of mdFiles) {
-    const meta = await readAgentMeta(path.join(agentsDir, file));
-    const domain = classifyAgent(file);
+    const meta = await readAgentMeta(file);
+    const domain = classifyAgent(path.relative(PACKAGE_AGENTS_DIR, file));
     if (!grouped[domain]) grouped[domain] = [];
     grouped[domain].push(meta);
   }
@@ -115,10 +117,9 @@ export async function listAgents() {
 }
 
 export async function listSkills() {
-  const claudeDir = await ensureClaudeInstalled();
-  const skillsDir = path.join(claudeDir, 'skills');
+  const skillsDir = PACKAGE_SKILLS_DIR;
   if (!(await pathExists(skillsDir))) {
-    log.warn('No skills/ directory found.');
+    log.warn('No package skills found.');
     return;
   }
   const entries = await readdir(skillsDir);
@@ -165,10 +166,9 @@ async function readPluginMeta(pluginDir, name) {
 }
 
 export async function listPlugins() {
-  const claudeDir = await ensureClaudeInstalled();
-  const pluginsDir = path.join(claudeDir, 'plugins');
+  const pluginsDir = PACKAGE_PLUGINS_DIR;
   if (!(await pathExists(pluginsDir))) {
-    log.warn('No plugins/ directory found.');
+    log.warn('No package plugins found.');
     return;
   }
   const entries = await readdir(pluginsDir);
@@ -192,17 +192,16 @@ export async function addPlugin(name) {
   if (!name || !/^[a-z0-9][a-z0-9._-]*$/i.test(name)) {
     throw new Error(`Invalid plugin name "${name}". Use letters, digits, dots, dashes, underscores.`);
   }
-  const src = path.join(TEMPLATE_DIR, 'plugins', name);
-  const dst = path.join(localClaudeDir(), 'plugins', name);
+  const src = path.join(PACKAGE_PLUGINS_DIR, name);
+  const dst = path.join(localRstackDir(), 'plugins', name);
 
   if (!(await pathExists(src))) {
-    throw new Error(`Plugin "${name}" not found in package templates.`);
+    throw new Error(`Plugin "${name}" not found in package plugins/.`);
   }
-  await ensureClaudeInstalled();
   await ensureDir(path.dirname(dst));
   if (await pathExists(dst)) {
     log.warn(`Plugin "${name}" already exists locally. Overwriting.`);
   }
-  const result = await copyTemplate(src, dst, { overwrite: true });
-  log.success(`Added plugin "${name}" (${result.filesCopied} files).`);
+  await copy(src, dst, { overwrite: true });
+  log.success(`Added plugin "${name}" to ${dst}.`);
 }

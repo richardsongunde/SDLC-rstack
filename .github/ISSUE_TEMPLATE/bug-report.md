@@ -4,6 +4,7 @@ about: Report incorrect or unexpected behavior in an rstack agent
 title: "[Bug] <short summary>"
 labels: ["bug"]
 assignees: []
+owner: RStack developed by Richardson Gunde
 ---
 
 ## Agent name

@@ -29,6 +29,12 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Validate agents
+        run: npm run validate
+
+      - name: Verify package contents
+        run: npm pack --dry-run
+
       - name: Publish to npm
         run: npm publish --access public
         env:

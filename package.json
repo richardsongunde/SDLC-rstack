@@ -9,34 +9,68 @@
   },
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "validate": "node src/commands/validate.js",
+    "validate": "node bin/rstack-agents.js validate",
     "lint": "eslint src/ bin/ tests/",
-    "sync:templates": "node scripts/sync-templates.js",
     "prepublishOnly": "npm test"
   },
-  "keywords": ["pi-package", "pi", "claude-code", "claude", "ai-agents", "llm", "automation", "sdlc", "agentic-sdlc"],
+  "keywords": [
+    "pi-package",
+    "pi",
+    "claude-code",
+    "claude",
+    "ai-agents",
+    "llm",
+    "automation",
+    "sdlc",
+    "agentic-sdlc"
+  ],
   "author": "Richardson Gunde",
   "license": "MIT",
-  "engines": { "node": ">=18.0.0" },
-  "files": ["bin/", "src/", "extensions/", "docs/public/", "README.md", "CHANGELOG.md"],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "extensions/",
+    "agents/",
+    "skills/",
+    "prompts/",
+    "plugins/",
+    "docs/public/",
+    "README.md"
+  ],
   "pi": {
-    "extensions": ["./extensions/rstack-sdlc.ts"]
+    "extensions": [
+      "./extensions/rstack-sdlc.ts"
+    ],
+    "skills": [
+      "./skills"
+    ],
+    "prompts": [
+      "./prompts"
+    ]
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/richardsongunde/rstack-agents"
+    "url": "https://github.com/richard-devbot/SDLC-rstack.git"
   },
   "dependencies": {
-    "commander": "^12.0.0",
+    "@earendil-works/pi-ai": "^0.74.1",
     "chalk": "^5.3.0",
+    "commander": "^12.0.0",
+    "fs-extra": "^11.2.0",
     "ora": "^8.0.1",
-    "fs-extra": "^11.2.0"
+    "typebox": "^1.1.38"
   },
   "peerDependencies": {
-    "@earendil-works/pi-coding-agent": "*",
-    "typebox": "*"
+    "@earendil-works/pi-coding-agent": "*"
   },
   "devDependencies": {
     "eslint": "^9.0.0"
-  }
+  },
+  "bugs": {
+    "url": "https://github.com/richard-devbot/SDLC-rstack/issues"
+  },
+  "homepage": "https://github.com/richard-devbot/SDLC-rstack#readme"
 }

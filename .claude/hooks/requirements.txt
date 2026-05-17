@@ -1,7 +1,0 @@
-# SDLC Automation Pipeline — Python Dependencies
-# The helpers use only Python standard library modules.
-# No external packages required for basic pipeline operation.
-#
-# Optional dependencies for enhanced features:
-# jsonschema>=4.0.0    # Full JSON Schema validation (optional)
-# rich>=13.0.0         # Enhanced terminal output (optional)

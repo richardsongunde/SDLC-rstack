@@ -1,9 +1,7 @@
 /**
- * Tests for agent definitions inside .claude/agents/.
+ * Tests for package-local agent definitions inside agents/.
  *
- * These tests inspect the live .claude/ directory at the repo root. Only
- * .md files recursively under .claude/agents/ are considered. Older workspaces
- * used flat symlinks, newer workspaces keep canonical agents in domain folders.
+ * These tests inspect the publishable agents/ directory at the repo root.
  */
 
 import test from 'node:test';
@@ -13,8 +11,7 @@ import { readdir, readFile, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
-const CLAUDE_DIR = path.join(REPO_ROOT, '.claude');
-const AGENTS_DIR = path.join(CLAUDE_DIR, 'agents');
+const AGENTS_DIR = path.join(REPO_ROOT, 'agents');
 
 const NAME_REGEX = /^[a-z0-9][a-z0-9.-]*$/;
 
@@ -134,7 +131,7 @@ test('all hook paths referenced in agent frontmatter exist on disk', async () =>
     if (!fm) continue;
     const paths = extractHookPaths(fm);
     for (const p of paths) {
-      const resolved = p.startsWith('/') ? p : path.join(CLAUDE_DIR, p.replace(/^\.?\//, ''));
+      const resolved = p.startsWith('/') ? p : path.join(REPO_ROOT, p.replace(/^\.?\//, ''));
       if (!existsSync(resolved)) {
         missing.push(`${path.basename(file)}: hook path missing -> ${p}`);
       }

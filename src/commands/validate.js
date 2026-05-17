@@ -1,5 +1,5 @@
 /**
- * `rstack-agents validate` — sanity-check the local .claude/ install.
+ * `rstack-agents validate` — sanity-check package-local agents/.
  *
  * Checks per-agent:
  *   - Frontmatter exists
@@ -11,13 +11,18 @@
 
 import path from 'node:path';
 import { readdir, readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import fsExtra from 'fs-extra';
 import chalk from 'chalk';
 import { log } from '../utils/logger.js';
 
 const { pathExists } = fsExtra;
 
-const NAME_REGEX = /^[a-z][a-z0-9-]*$/;
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const PACKAGE_ROOT = path.resolve(__dirname, '..', '..');
+const AGENTS_DIR = path.join(PACKAGE_ROOT, 'agents');
+
+const NAME_REGEX = /^[a-z0-9][a-z0-9.-]*$/;
 
 function parseFrontmatter(content) {
   if (!content.startsWith('---')) return null;
@@ -50,18 +55,27 @@ function extractHookPaths(frontmatter) {
   return paths;
 }
 
+async function listFilesRecursive(dir, predicate) {
+  if (!(await pathExists(dir))) return [];
+  const entries = await readdir(dir, { withFileTypes: true });
+  const out = [];
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...await listFilesRecursive(full, predicate));
+    else if (predicate(full)) out.push(full);
+  }
+  return out;
+}
+
 export async function validateCommand() {
-  const cwd = process.cwd();
-  const claudeDir = path.join(cwd, '.claude');
-  const agentsDir = path.join(claudeDir, 'agents');
+  const agentsDir = AGENTS_DIR;
 
   if (!(await pathExists(agentsDir))) {
-    log.error(`.claude/agents/ not found in ${cwd}. Run \`rstack-agents init\` first.`);
+    log.error(`agents/ not found in package root ${PACKAGE_ROOT}.`);
     return 1;
   }
 
-  const entries = await readdir(agentsDir);
-  const mdFiles = entries.filter((e) => e.endsWith('.md'));
+  const mdFiles = await listFilesRecursive(agentsDir, (file) => file.endsWith('.md'));
 
   if (mdFiles.length === 0) {
     log.warn('No agent .md files found.');
@@ -72,8 +86,8 @@ export async function validateCommand() {
   const results = [];
   let failures = 0;
 
-  for (const file of mdFiles) {
-    const fp = path.join(agentsDir, file);
+  for (const fp of mdFiles) {
+    const file = path.relative(agentsDir, fp);
     const content = await readFile(fp, 'utf8');
     const fm = parseFrontmatter(content);
     const issues = [];
@@ -99,7 +113,7 @@ export async function validateCommand() {
 
       const hookPaths = extractHookPaths(fm);
       for (const hp of hookPaths) {
-        const resolved = hp.startsWith('/') ? hp : path.join(claudeDir, hp.replace(/^\.?\//, ''));
+        const resolved = hp.startsWith('/') ? hp : path.join(PACKAGE_ROOT, hp.replace(/^\.?\//, ''));
         if (!(await pathExists(resolved))) {
           issues.push(`hook path not found on disk: ${hp}`);
         }

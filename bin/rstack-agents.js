@@ -3,8 +3,6 @@
  * rstack-agents CLI entry point.
  *
  * Commands:
- *   rstack-agents init [--force]
- *   rstack-agents update [--agents-only]
  *   rstack-agents list <agents|skills|plugins>
  *   rstack-agents add plugin <name>
  *   rstack-agents validate
@@ -12,8 +10,6 @@
 
 import { Command } from 'commander';
 import chalk from 'chalk';
-import { initCommand } from '../src/commands/init.js';
-import { updateCommand } from '../src/commands/update.js';
 import { listAgents, listSkills, listPlugins, addPlugin } from '../src/commands/list.js';
 import { validateCommand } from '../src/commands/validate.js';
 import { log } from '../src/utils/logger.js';
@@ -28,42 +24,16 @@ const program = new Command();
 
 program
   .name('rstack-agents')
-  .description('Scaffold the rstack Claude Code AI agent framework into any project')
+  .description('Inspect the RStack SDLC Pi package assets')
   .version(pkg.version);
-
-program
-  .command('init')
-  .description('Scaffold .claude/ into the current project')
-  .option('-f, --force', 'overwrite an existing .claude/ directory without prompting', false)
-  .action(async (options) => {
-    try {
-      await initCommand(options);
-    } catch (err) {
-      log.error(err.message);
-      process.exit(1);
-    }
-  });
-
-program
-  .command('update')
-  .description('Update the framework, preserving local user customizations')
-  .option('--agents-only', 'only update agents, skills, and plugins', false)
-  .action(async (options) => {
-    try {
-      await updateCommand(options);
-    } catch (err) {
-      log.error(err.message);
-      process.exit(1);
-    }
-  });
 
 const listCmd = program
   .command('list')
-  .description('List available agents, skills, or plugins');
+  .description('List packaged agents, skills, or plugins');
 
 listCmd
   .command('agents')
-  .description('List all agents grouped by domain')
+  .description('List all packaged agents grouped by domain')
   .action(async () => {
     try {
       await listAgents();
@@ -75,7 +45,7 @@ listCmd
 
 listCmd
   .command('skills')
-  .description('List all skills with descriptions')
+  .description('List all packaged skills with descriptions')
   .action(async () => {
     try {
       await listSkills();
@@ -87,7 +57,7 @@ listCmd
 
 listCmd
   .command('plugins')
-  .description('List all plugins with descriptions')
+  .description('List all packaged plugins with descriptions')
   .action(async () => {
     try {
       await listPlugins();
@@ -99,9 +69,9 @@ listCmd
 
 program
   .command('add')
-  .argument('<resource>', 'resource type to add (currently only "plugin")')
+  .argument('<resource>', 'resource type to add, currently only "plugin"')
   .argument('<name>', 'name of the resource to add')
-  .description('Add a specific plugin to the local .claude/plugins/ directory')
+  .description('Copy a packaged plugin into .rstack/plugins/<name> in the current project')
   .action(async (resource, name) => {
     try {
       if (resource !== 'plugin') {
@@ -117,7 +87,7 @@ program
 
 program
   .command('validate')
-  .description('Validate local .claude/ agent definitions')
+  .description('Validate packaged agent definitions')
   .action(async () => {
     try {
       const exitCode = await validateCommand();

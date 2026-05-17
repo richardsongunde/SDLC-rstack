@@ -4,6 +4,7 @@ about: Request a new specialized agent for rstack-agents
 title: "[Agent Request] <short agent name>"
 labels: ["agent-request", "enhancement"]
 assignees: []
+owner: RStack developed by Richardson Gunde
 ---
 
 ## Agent name

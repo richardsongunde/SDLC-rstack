@@ -1,3 +1,5 @@
+<!-- owner: RStack developed by Richardson Gunde -->
+
 # RStack Product Overview
 
 RStack is an agentic software delivery system for Pi and other coding agents. It is designed to make an AI assistant operate more like a productive software team than a single chat bot.

@@ -1,15 +1,13 @@
-# Source workspace — `templates/` is what ships, not the live `.claude/`
-.claude/
-
 # Workspace artifacts
-Protifolio-Richard/
-logs/
 .rstack/
 outputs/
 specs/
-docs/
-!docs/public/
-!docs/public/**
+logs/
+
+# Legacy/private local workspaces are not part of the Pi-first package
+.claude/
+.agents/
+.codex/
 
 # CI / repo metadata
 .github/
