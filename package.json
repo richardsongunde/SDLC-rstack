@@ -11,7 +11,7 @@
     "test": "node --test tests/*.test.js",
     "validate": "node bin/rstack-agents.js validate",
     "lint": "eslint src/ bin/ tests/",
-    "prepublishOnly": "npm test"
+    "prepublishOnly": "npm test && npm run validate"
   },
   "keywords": [
     "pi-package",
@@ -72,5 +72,8 @@
   "bugs": {
     "url": "https://github.com/richard-devbot/SDLC-rstack/issues"
   },
-  "homepage": "https://github.com/richard-devbot/SDLC-rstack#readme"
+  "homepage": "https://github.com/richard-devbot/SDLC-rstack#readme",
+  "publishConfig": {
+    "access": "public"
+  }
 }
