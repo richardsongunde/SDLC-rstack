@@ -1,0 +1,133 @@
+export const BUILDER_REQUIRED_FIELDS = Object.freeze([
+  'task_id',
+  'agent',
+  'status',
+  'summary',
+  'files_modified',
+  'tests_run',
+  'risks',
+  'next_steps',
+]);
+
+export const VALIDATOR_REQUIRED_FIELDS = Object.freeze([
+  'task_id',
+  'validator',
+  'status',
+  'checks',
+  'issues',
+  'retry_recommendation',
+]);
+
+export const BUILDER_STATUSES = Object.freeze(['PASS', 'FAIL', 'BLOCKED', 'DONE_WITH_CONCERNS']);
+export const VALIDATOR_STATUSES = Object.freeze(['PASS', 'FAIL']);
+export const RETRY_RECOMMENDATIONS = Object.freeze(['none', 'retry_builder', 'ask_user', 'block']);
+
+function hasOwn(value, field) {
+  return Object.prototype.hasOwnProperty.call(value, field);
+}
+
+export function validateRequiredFields(value, fields, prefix) {
+  return fields.map((field) => {
+    const present = value && hasOwn(value, field);
+    return {
+      name: `${prefix}_has_${field}`,
+      status: present ? 'PASS' : 'FAIL',
+      evidence: present ? 'present' : 'missing',
+    };
+  });
+}
+
+function summarizeChecks(checks) {
+  return {
+    ok: checks.every((check) => check.status === 'PASS'),
+    checks,
+    issues: checks.filter((check) => check.status === 'FAIL'),
+  };
+}
+
+export function validateBuilderContract(builder, expectedTaskId) {
+  const checks = validateRequiredFields(builder, BUILDER_REQUIRED_FIELDS, 'builder');
+
+  if (builder && hasOwn(builder, 'task_id')) {
+    const matches = !expectedTaskId || builder.task_id === expectedTaskId;
+    checks.push({
+      name: 'builder_task_id_matches',
+      status: matches ? 'PASS' : 'FAIL',
+      evidence: matches ? builder.task_id : `expected ${expectedTaskId}, got ${builder.task_id}`,
+    });
+  }
+
+  if (builder && hasOwn(builder, 'status')) {
+    const allowed = BUILDER_STATUSES.includes(builder.status);
+    checks.push({
+      name: 'builder_status_allowed',
+      status: allowed ? 'PASS' : 'FAIL',
+      evidence: String(builder.status),
+    });
+  }
+
+  for (const field of ['files_modified', 'tests_run', 'risks', 'next_steps']) {
+    if (builder && hasOwn(builder, field)) {
+      const isArray = Array.isArray(builder[field]);
+      checks.push({
+        name: `builder_${field}_is_array`,
+        status: isArray ? 'PASS' : 'FAIL',
+        evidence: isArray ? `${builder[field].length} item(s)` : 'not an array',
+      });
+    }
+  }
+
+  if (builder && ['BLOCKED', 'FAIL'].includes(builder.status)) {
+    checks.push({
+      name: 'builder_reported_not_pass',
+      status: 'FAIL',
+      evidence: builder.status,
+    });
+  }
+
+  return summarizeChecks(checks);
+}
+
+export function validateValidatorContract(validator, expectedTaskId) {
+  const checks = validateRequiredFields(validator, VALIDATOR_REQUIRED_FIELDS, 'validator');
+
+  if (validator && hasOwn(validator, 'task_id')) {
+    const matches = !expectedTaskId || validator.task_id === expectedTaskId;
+    checks.push({
+      name: 'validator_task_id_matches',
+      status: matches ? 'PASS' : 'FAIL',
+      evidence: matches ? validator.task_id : `expected ${expectedTaskId}, got ${validator.task_id}`,
+    });
+  }
+
+  if (validator && hasOwn(validator, 'status')) {
+    const allowed = VALIDATOR_STATUSES.includes(validator.status);
+    checks.push({
+      name: 'validator_status_allowed',
+      status: allowed ? 'PASS' : 'FAIL',
+      evidence: String(validator.status),
+    });
+  }
+
+  if (validator && hasOwn(validator, 'retry_recommendation')) {
+    const allowed = RETRY_RECOMMENDATIONS.includes(validator.retry_recommendation);
+    checks.push({
+      name: 'validator_retry_recommendation_allowed',
+      status: allowed ? 'PASS' : 'FAIL',
+      evidence: String(validator.retry_recommendation),
+    });
+  }
+
+  for (const field of ['checks', 'issues']) {
+    if (validator && hasOwn(validator, field)) {
+      const isArray = Array.isArray(validator[field]);
+      checks.push({
+        name: `validator_${field}_is_array`,
+        status: isArray ? 'PASS' : 'FAIL',
+        evidence: isArray ? `${validator[field].length} item(s)` : 'not an array',
+      });
+    }
+  }
+
+  return summarizeChecks(checks);
+}
