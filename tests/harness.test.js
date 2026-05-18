@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, rmSync, mkdirSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync, mkdirSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import extension from '../extensions/rstack-sdlc.ts';
 
@@ -36,6 +36,27 @@ test('SDLC-rstack E2E Harness Simulation', async (t) => {
     
     const manifestPath = join(projectRoot, '.rstack', 'runs', result.details.run_id, 'manifest.json');
     assert.ok(existsSync(manifestPath), 'Manifest should exist');
+
+    const stageRoot = join(projectRoot, '.rstack', 'runs', result.details.run_id, 'artifacts', 'stages');
+    const stageDirs = readdirSync(stageRoot).sort();
+    assert.equal(stageDirs.length, 15, 'Run should prepare exactly 15 canonical stage folders');
+    assert.deepEqual(stageDirs, [
+      '00-environment',
+      '01-transcript',
+      '02-requirements',
+      '03-documentation',
+      '04-planning',
+      '05-jira',
+      '06-architecture',
+      '07-code',
+      '08-testing',
+      '09-deployment',
+      '10-summary',
+      '11-feedback-loop',
+      '12-security-threat-model',
+      '13-compliance-checker',
+      '14-cost-estimation',
+    ]);
   });
 
   const runId = (await mockPi.tools.sdlc_status.execute('2', {})).details.manifest.run_id;
@@ -53,6 +74,10 @@ test('SDLC-rstack E2E Harness Simulation', async (t) => {
     const requirementsTask = tasks.find(t => t.id === '002-requirements');
     assert.ok(requirementsTask.pipeline_agents.includes('agent.02-requirements'), 'Requirements stage should route to sdlc/02-requirements');
     assert.ok(requirementsTask.pipeline_agents.includes('agent.04-planning'), 'Requirements stage should route to sdlc/04-planning');
+    assert.ok(requirementsTask.stage_artifacts.some(a => a.stage_id === '02-requirements' && a.artifact_path.endsWith('/artifacts/stages/02-requirements/requirements.json')), 'Requirements task should expose canonical stage artifact path');
+
+    const architectureTask = tasks.find(t => t.id === '003-architecture');
+    assert.ok(architectureTask.stage_artifacts.some(a => a.stage_id === '06-architecture'), 'Architecture task should route canonical architecture stage output');
 
     const registryDir = join(projectRoot, '.rstack', 'registry');
     assert.ok(existsSync(join(registryDir, 'registry.json')), 'Full registry should exist');
