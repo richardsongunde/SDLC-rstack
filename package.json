@@ -38,6 +38,7 @@
     "prompts/",
     "plugins/",
     "docs/public/",
+    "docs/HARNESS.md",
     "README.md"
   ],
   "pi": {

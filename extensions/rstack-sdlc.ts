@@ -6,6 +6,11 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, writeFile, appendFile } from "node:fs/promises";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { getCanonicalStage, stageArtifactRelativePath } from "../src/harness/stages.js";
+import { validateBuilderContract } from "../src/harness/contracts.js";
+import { appendEvidenceEvent } from "../src/harness/evidence.js";
+import { DEFAULT_HARNESS_GUARDRAILS, guardrailSummary } from "../src/harness/guardrails.js";
+import { prepareRunState, prepareStageFolders } from "../src/harness/run-state.js";
 
 const RSTACK_VERSION = "0.3.0";
 const EXTENSION_DIR = dirname(fileURLToPath(import.meta.url));
@@ -50,6 +55,7 @@ type LifecycleStage = {
   description: string;
   acceptanceCriteria: string[];
   validationChecks: string[];
+  stageIds: string[];
 };
 
 const lifecycleStages: LifecycleStage[] = [
@@ -61,6 +67,7 @@ const lifecycleStages: LifecycleStage[] = [
     description: "Confirm target users, business outcome, must-have behavior, non-goals, risks, and open decisions.",
     acceptanceCriteria: ["User goal is restated in concrete product terms", "Open questions are resolved or explicitly marked NEEDS_CONTEXT", "Non-goals and release boundaries are listed"],
     validationChecks: ["Product brief exists", "Ambiguities are not silently guessed", "Recommended option is provided for each unresolved decision"],
+    stageIds: ["00-environment", "01-transcript"],
   },
   {
     id: "002-requirements",
@@ -70,6 +77,7 @@ const lifecycleStages: LifecycleStage[] = [
     description: "Convert the clarified goal into testable functional requirements, non-functional requirements, user stories, and out-of-scope items.",
     acceptanceCriteria: ["Every requirement has observable acceptance criteria", "NFRs use measurable targets where possible", "Out-of-scope items are explicit"],
     validationChecks: ["No vague requirements like fast/easy/secure without measurable criteria", "Acceptance criteria can be tested by QA", "Requirements map to the original goal"],
+    stageIds: ["02-requirements", "04-planning", "05-jira"],
   },
   {
     id: "003-architecture",
@@ -79,6 +87,7 @@ const lifecycleStages: LifecycleStage[] = [
     description: "Design the system, data flow, interfaces, storage, security boundaries, deployment shape, and trade-offs.",
     acceptanceCriteria: ["Architecture maps to requirements", "Key trade-offs and failure modes are documented", "Security and data boundaries are identified"],
     validationChecks: ["No unexplained tech stack choices", "Interfaces and data models are clear enough to build", "Threat-sensitive areas are flagged"],
+    stageIds: ["06-architecture", "12-security-threat-model", "14-cost-estimation"],
   },
   {
     id: "004-implementation",
@@ -88,6 +97,7 @@ const lifecycleStages: LifecycleStage[] = [
     description: "Build scoped, working code that follows the architecture and existing project conventions.",
     acceptanceCriteria: ["Required behavior is implemented without placeholder TODO stubs", "Files changed stay within scope", "Relevant local verification command is run or blocked with reason"],
     validationChecks: ["Code starts or compiles when applicable", "Error handling exists for expected failure paths", "No unrelated refactors or broad rewrites"],
+    stageIds: ["07-code"],
   },
   {
     id: "005-testing",
@@ -97,6 +107,7 @@ const lifecycleStages: LifecycleStage[] = [
     description: "Create or run unit, integration, browser, and regression checks appropriate to the project.",
     acceptanceCriteria: ["Critical acceptance criteria have tests or manual verification steps", "Test command output is captured", "Known coverage gaps are listed"],
     validationChecks: ["Tests actually ran or blockers are explicit", "Failures include root-cause direction", "No false pass when tests were skipped"],
+    stageIds: ["08-testing"],
   },
   {
     id: "006-security-review",
@@ -106,6 +117,7 @@ const lifecycleStages: LifecycleStage[] = [
     description: "Review auth, secrets, input validation, permissions, PII, dependency, and deployment risks.",
     acceptanceCriteria: ["Security-sensitive surfaces are enumerated", "Critical and high risks have mitigation or block recommendation", "Secrets and destructive operations are checked"],
     validationChecks: ["OWASP-style risks considered", "No secrets are introduced", "Auth/payment/PII changes get conservative review"],
+    stageIds: ["12-security-threat-model", "13-compliance-checker"],
   },
   {
     id: "007-documentation",
@@ -115,6 +127,7 @@ const lifecycleStages: LifecycleStage[] = [
     description: "Update user, developer, release, and operations documentation needed to maintain the work.",
     acceptanceCriteria: ["Setup and run instructions are current", "Changed behavior is documented", "Known limitations and next steps are listed"],
     validationChecks: ["Docs match implemented behavior", "No stale commands are introduced", "Handoff is useful to a new maintainer"],
+    stageIds: ["03-documentation", "10-summary"],
   },
   {
     id: "008-release-readiness",
@@ -124,6 +137,7 @@ const lifecycleStages: LifecycleStage[] = [
     description: "Verify package boundaries, tests, docs, versioning, git status, and release blockers before shipping.",
     acceptanceCriteria: ["All previous required tasks are PASS or explicitly accepted with concerns", "Release blockers are listed", "Next release or PR action is clear"],
     validationChecks: ["Package excludes private files", "Tests pass", "No unreviewed destructive or deployment step is implied"],
+    stageIds: ["09-deployment", "10-summary", "11-feedback-loop"],
   },
 ];
 
@@ -435,6 +449,25 @@ function missingApprovals(approvals: ApprovalRecord[], required: string[]): stri
   return required.filter((artifact) => !approved.has(artifact));
 }
 
+function stageArtifactTargets(runId: string, stageIds: string[]) {
+  return stageIds.map((stageId) => {
+    const stage = getCanonicalStage(stageId);
+    if (!stage) throw new Error(`Unknown canonical SDLC stage: ${stageId}`);
+    return {
+      stage_id: stage.id,
+      title: stage.title,
+      agent: stage.agent,
+      artifact: stage.artifact,
+      artifact_path: stageArtifactRelativePath(runId, stage.id, stage.artifact),
+    };
+  });
+}
+
+function stageArtifactPrompt(targets: any[]): string {
+  if (!targets.length) return "No canonical stage artifact targets were routed for this task.";
+  return targets.map((target) => `- ${target.stage_id}: ${target.artifact_path}`).join("\n");
+}
+
 function initialSpecContent(stage: LifecycleStage, manifest: RunManifest): string {
   const base = {
     run_id: manifest.run_id,
@@ -524,7 +557,7 @@ async function coreAgentContext(projectRoot: string): Promise<string> {
 async function builderPrompt(projectRoot: string, task: any, selected: RegistryItem[]): Promise<string> {
   const core = await coreAgentContext(projectRoot);
   const specialists = await agentContext(projectRoot, selected);
-  return `# RStack Builder Task: ${task.title}\n\nYou are not a generic coding assistant for this task. You are running the RStack agent stack. Follow the embedded orchestrator, builder, validator, and specialist instructions below.\n\n## Embedded RStack core instructions\n${core || "Core agent files not found. Continue with the RStack contract."}\n\n## Scope\n${task.description}\n\n## Acceptance criteria\n${(task.acceptance_criteria || []).map((item: string) => `- ${item}`).join("\n") || "- Meet the task description without scope creep."}\n\n## Validation checklist\n${(task.validation_checks || []).map((item: string) => `- ${item}`).join("\n") || "- Provide evidence for every claim."}\n\n## Artifact target\nWrite stage artifacts under: ${task.artifact_path}\n\n## Rules\n- Make only the changes needed for this task.\n- If requirements are ambiguous, stop and report NEEDS_CONTEXT in the summary.\n- If the existing code appears unrelated or broken beyond this task, stop and report BLOCKED.\n- Run relevant checks before marking the task complete.\n- Write the builder contract to ${task.output_dir}/builder.json.\n\n## Selected specialist instructions loaded by RStack\n${specialists || selected.map((item) => `- ${item.kind}: ${item.name} (${item.path})`).join("\n") || "No specialist registry entries found. Use general engineering judgment."}\n\n## Builder contract\n\`\`\`json\n{\n  "task_id": "${task.id}",\n  "agent": "builder",\n  "status": "PASS|FAIL|BLOCKED|DONE_WITH_CONCERNS",\n  "summary": "",\n  "files_modified": [],\n  "tests_run": [],\n  "risks": [],\n  "next_steps": []\n}\n\`\`\`\n`;
+  return `# RStack Builder Task: ${task.title}\n\nYou are not a generic coding assistant for this task. You are running the RStack agent stack. Follow the embedded orchestrator, builder, validator, and specialist instructions below.\n\n## Embedded RStack core instructions\n${core || "Core agent files not found. Continue with the RStack contract."}\n\n## Scope\n${task.description}\n\n## Acceptance criteria\n${(task.acceptance_criteria || []).map((item: string) => `- ${item}`).join("\n") || "- Meet the task description without scope creep."}\n\n## Validation checklist\n${(task.validation_checks || []).map((item: string) => `- ${item}`).join("\n") || "- Provide evidence for every claim."}\n\n## Artifact target\nCompatibility artifact target: ${task.artifact_path}\n\n## Canonical 00-14 stage artifact targets\n${stageArtifactPrompt(task.stage_artifacts || [])}\n\n## Harness guardrails\n${guardrailSummary(DEFAULT_HARNESS_GUARDRAILS)}\n\n## Rules\n- Make only the changes needed for this task.\n- Write canonical stage outputs under artifacts/stages/<stage-id>/ when a stage target is listed.\n- Root artifacts are compatibility outputs only unless the task explicitly requires them.\n- If requirements are ambiguous, stop and report NEEDS_CONTEXT in the summary.\n- If the existing code appears unrelated or broken beyond this task, stop and report BLOCKED.\n- Run relevant checks before marking the task complete.\n- Write the builder contract to ${task.output_dir}/builder.json.\n\n## Selected specialist instructions loaded by RStack\n${specialists || selected.map((item) => `- ${item.kind}: ${item.name} (${item.path})`).join("\n") || "No specialist registry entries found. Use general engineering judgment."}\n\n## Builder contract\n\`\`\`json\n{\n  "task_id": "${task.id}",\n  "agent": "builder",\n  "status": "PASS|FAIL|BLOCKED|DONE_WITH_CONCERNS",\n  "summary": "",\n  "files_modified": [],\n  "tests_run": [],\n  "risks": [],\n  "next_steps": []\n}\n\`\`\`\n`;
 }
 
 async function orchestratorPacket(projectRoot: string, goal?: string): Promise<string> {
@@ -782,7 +815,7 @@ export default function (pi: ExtensionAPI) {
       const projectRoot = findProjectRoot();
       const id = runId(params.goal);
       const dir = join(runsDir(projectRoot), id);
-      await mkdir(join(dir, "tasks"), { recursive: true });
+      await prepareRunState(dir);
       await mkdir(memoryDir(projectRoot), { recursive: true });
       const manifest: RunManifest = {
         run_id: id,
@@ -798,7 +831,6 @@ export default function (pi: ExtensionAPI) {
       await mkdir(specsDir(dir), { recursive: true });
       await writeFile(approvalsPath(dir), JSON.stringify([], null, 2));
       await writeFile(join(dir, "context.md"), `# RStack Run Context\n\nGoal: ${params.goal}\n\nMode: ${manifest.mode}\n\n## Product-owner notes\n\n`);
-      await mkdir(join(dir, "artifacts"), { recursive: true });
       await appendEvent(projectRoot, id, { type: "run_started", goal: params.goal });
       return { content: [{ type: "text", text: `Started RStack SDLC run ${id}\nRun directory: ${relative(projectRoot, dir)}\nNext: call sdlc_clarify for product-owner decisions, or sdlc_plan if the goal is already clear.` }], details: manifest };
     },
@@ -857,6 +889,7 @@ export default function (pi: ExtensionAPI) {
         const outputDir = `.rstack/runs/${manifest.run_id}/tasks/${stage.id}`;
         const pipelineAgents = pipelineAgentRoutes[stage.id] || [];
         const routedSpecialists = selectRegistry(registry, [...stage.domains, ...chosenDomains], 5).map((item) => item.id);
+        const stageArtifacts = stageArtifactTargets(manifest.run_id, stage.stageIds);
         return {
           id: stage.id,
           title: stage.title,
@@ -866,6 +899,7 @@ export default function (pi: ExtensionAPI) {
           acceptance_criteria: stage.acceptanceCriteria,
           validation_checks: stage.validationChecks,
           artifact_path: `.rstack/runs/${manifest.run_id}/artifacts/${stage.artifact}`,
+          stage_artifacts: stageArtifacts,
           output_dir: outputDir,
           pipeline_agents: pipelineAgents,
           specialists: [...new Set([...pipelineAgents, ...routedSpecialists])],
@@ -873,6 +907,7 @@ export default function (pi: ExtensionAPI) {
       });
       for (const task of tasks) await mkdir(join(projectRoot, task.output_dir), { recursive: true });
       await mkdir(join(runDir, "artifacts"), { recursive: true });
+      await prepareStageFolders(runDir);
       const plan = `# RStack SDLC Plan\n\nGoal: ${manifest.goal}\n\nMode: ${manifest.mode}\n\n## Constraints\n${(params.constraints || ["Ask before destructive actions", "Validate before release", "Keep scope bounded", "Do not claim DONE without evidence", "Use .rstack/runs state, not legacy outputs/team_state"]).map((c) => `- ${c}`).join("\n")}\n\n## Lifecycle\n${tasks.map((t) => `- [ ] ${t.id}: ${t.title}\n  - Artifact: ${t.artifact_path}\n  - Pipeline agents: ${t.pipeline_agents.join(", ") || "none"}\n  - Acceptance: ${t.acceptance_criteria.join("; ")}`).join("\n")}\n\n## Operating model\n\nThe orchestrator creates bounded builder tasks. Validators check each task before the run advances. User approval is required for major product decisions, destructive changes, and release/merge actions.\n`;
       await writeFile(join(runDir, "plan.md"), plan);
       await writeFile(join(runDir, "tasks.json"), JSON.stringify({ run_id: manifest.run_id, tasks }, null, 2));
@@ -951,26 +986,9 @@ export default function (pi: ExtensionAPI) {
       } else {
         try {
           const builder = JSON.parse(await readFile(builderPath, "utf8"));
-          for (const field of ["task_id", "status", "summary", "files_modified", "tests_run", "risks", "next_steps"]) {
-            const ok = Object.prototype.hasOwnProperty.call(builder, field);
-            checks.push({ name: `builder_has_${field}`, status: ok ? "PASS" : "FAIL", evidence: ok ? "present" : "missing" });
-            if (!ok) status = "FAIL";
-          }
-          if (builder.task_id !== task.id) {
-            status = "FAIL";
-            checks.push({ name: "task_id_matches", status: "FAIL", evidence: `expected ${task.id}, got ${builder.task_id}` });
-          }
-          if (!["PASS", "FAIL", "BLOCKED", "DONE_WITH_CONCERNS"].includes(builder.status)) {
-            status = "FAIL";
-            checks.push({ name: "builder_status_allowed", status: "FAIL", evidence: `invalid status ${builder.status}` });
-          } else {
-            checks.push({ name: "builder_status_allowed", status: "PASS", evidence: builder.status });
-          }
-          for (const field of ["files_modified", "tests_run", "risks", "next_steps"]) {
-            const ok = Array.isArray(builder[field]);
-            checks.push({ name: `builder_${field}_is_array`, status: ok ? "PASS" : "FAIL", evidence: ok ? `${builder[field].length} item(s)` : "not an array" });
-            if (!ok) status = "FAIL";
-          }
+          const contract = validateBuilderContract(builder, task.id);
+          checks.push(...contract.checks);
+          if (!contract.ok) status = "FAIL";
           if (Array.isArray(builder.files_modified)) {
             for (const file of builder.files_modified.slice(0, 20)) {
               if (typeof file !== "string") continue;
@@ -978,10 +996,6 @@ export default function (pi: ExtensionAPI) {
               checks.push({ name: "modified_file_exists", status: exists ? "PASS" : "FAIL", evidence: file });
               if (!exists) status = "FAIL";
             }
-          }
-          if (builder.status === "BLOCKED" || builder.status === "FAIL") {
-            status = "FAIL";
-            checks.push({ name: "builder_reported_not_pass", status: "FAIL", evidence: builder.status });
           }
         } catch (error) {
           status = "FAIL";
@@ -993,6 +1007,12 @@ export default function (pi: ExtensionAPI) {
       task.status = status;
       await writeFile(tasksPath, JSON.stringify(taskState, null, 2));
       await appendEvent(projectRoot, manifest.run_id, { type: "task_validated", task_id: task.id, status });
+      await appendEvidenceEvent(join(runsDir(projectRoot), manifest.run_id), {
+        task_id: task.id,
+        kind: "validation",
+        status: status === "PASS" ? "PASS" : "FAIL",
+        evidence: `${task.output_dir}/validation.json`,
+      });
       return { content: [{ type: "text", text: `Validation ${status} for ${task.id}\nReport: ${task.output_dir}/validation.json` }], details: validation };
     },
   });

@@ -69,7 +69,7 @@ test('all packaged markdown frontmatter uses Pi-safe YAML scalars', async () => 
     if (!block) continue;
     for (const [key, rawValue] of topLevelFields(block)) {
       const value = rawValue.trim();
-      if (key === 'argument-hint' && /[\[\]|]/.test(value) && !isQuotedOrBlockScalar(value)) {
+      if (key === 'argument-hint' && /[[\]|]/.test(value) && !isQuotedOrBlockScalar(value)) {
         issues.push(`${rel}: quote argument-hint value ${value}`);
       }
       if (!isQuotedOrBlockScalar(value) && /:\s/.test(value)) {
