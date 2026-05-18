@@ -25,6 +25,7 @@ RStack ships with a native **Pi adapter today**, but the framework itself is por
 | `prompts/` | Prompt templates and command-style workflows. |
 | `plugins/` | Domain packs with manifests, agents, skills, and commands. |
 | `extensions/rstack-sdlc.ts` | Native Pi runtime adapter. |
+| `src/harness/` | Canonical 15-stage metadata, run-folder preparation, contracts, evidence, and guardrails. |
 | `.rstack/runs/` | Generated run state, specs, approvals, traceability, tasks, and validation evidence. |
 
 Current package assets:
@@ -66,6 +67,20 @@ docs/public/
 So the correct framing is:
 
 > RStack SDLC is a portable AI-SDLC framework with a first-class Pi adapter today.
+
+---
+
+## Harness guarantees
+
+RStack includes a package-local Harness layer in `src/harness/`. The Harness makes the SDLC runtime machine-checkable:
+
+- Preserves the canonical 15-stage pipeline from `00-environment` through `14-cost-estimation`.
+- Prepares clean `artifacts/stages/<stage-id>/` folders for every run.
+- Validates builder and validator contracts before a task can pass.
+- Records task evidence events in `events.jsonl` with `task_id`, `kind`, `status`, and `evidence`.
+- Carries guardrail defaults for attempts, message/tool limits, evidence, contracts, and destructive-action approval.
+
+See [`docs/HARNESS.md`](docs/HARNESS.md) for the full runtime contract.
 
 ---
 
