@@ -12,6 +12,10 @@ export const DEFAULT_MEMORY_CONFIG = Object.freeze({
   minScore: 0.08,
   writePolicy: 'validator-approved-only',
   embeddingProvider: 'none',
+  prunerSoftTrimChars: 600,
+  prunerHardClearChars: 1200,
+  prunerSoftTrimHead: 200,
+  prunerSoftTrimTail: 100,
 });
 
 export const EPISODE_REQUIRED_FIELDS = Object.freeze([
@@ -67,6 +71,8 @@ export function mergeMemoryConfig(config = {}) {
   if (!['jsonl'].includes(merged.backend)) merged.backend = DEFAULT_MEMORY_CONFIG.backend;
   if (!['lexical'].includes(merged.retrieval)) merged.retrieval = DEFAULT_MEMORY_CONFIG.retrieval;
   if (!['validator-approved-only', 'validation-attempts'].includes(merged.writePolicy)) merged.writePolicy = DEFAULT_MEMORY_CONFIG.writePolicy;
+  merged.prunerSoftTrimChars = Number.isFinite(Number(merged.prunerSoftTrimChars)) ? Math.max(100, Number(merged.prunerSoftTrimChars)) : DEFAULT_MEMORY_CONFIG.prunerSoftTrimChars;
+  merged.prunerHardClearChars = Number.isFinite(Number(merged.prunerHardClearChars)) ? Math.max(200, Number(merged.prunerHardClearChars)) : DEFAULT_MEMORY_CONFIG.prunerHardClearChars;
   return merged;
 }
 
@@ -356,6 +362,20 @@ export async function recallEpisodes(memoryDir, options = {}) {
     .slice(0, config.topK);
 }
 
+function pruneEpisodeContent(notes, config, isProtected) {
+  if (isProtected) return notes;
+  const len = notes.length;
+  if (len > config.prunerHardClearChars) {
+    return '[memory trimmed — episode outside protected tail]';
+  }
+  if (len > config.prunerSoftTrimChars) {
+    const head = notes.slice(0, config.prunerSoftTrimHead);
+    const tail = notes.slice(-config.prunerSoftTrimTail);
+    return `${head}…${tail}`;
+  }
+  return notes;
+}
+
 export function formatEpisodesForPrompt(episodes, config = {}) {
   const merged = mergeMemoryConfig(config);
   if (!episodes?.length) return '';
@@ -369,7 +389,9 @@ export function formatEpisodesForPrompt(episodes, config = {}) {
     const agents = (episode.agent_ids || []).join(', ') || 'unknown-agent';
     const tests = (episode.tests_run || []).slice(0, 2).join('; ') || 'no tests recorded';
     const files = (episode.files_modified || []).slice(0, 3).join(', ') || 'no files recorded';
-    const notes = sanitizeMemoryText(episode.notes || episode.approach || episode.task, 320);
+    const isProtected = index === 0;
+    const rawNotes = episode.notes || episode.approach || episode.task || '';
+    const notes = pruneEpisodeContent(sanitizeMemoryText(rawNotes, 320), merged, isProtected);
     const keep = (episode.memory_summary?.context_to_keep || []).slice(0, 3).join('; ');
     const hints = (episode.memory_summary?.next_agent_hints || []).slice(0, 2).join('; ');
     return `${index + 1}. [${episode.outcome}/${episode.validator_status}] score=${episode.retrieval_score} stage=${stage} agents=${agents}\n   Lesson: ${notes}${keep ? `\n   Keep: ${keep}` : ''}${hints ? `\n   Next-agent hints: ${hints}` : ''}\n   Evidence: ${(episode.evidence_paths || []).join(', ')}\n   Files: ${files}\n   Tests: ${tests}`;
