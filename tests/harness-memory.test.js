@@ -191,3 +191,47 @@ test('sanitizeMemoryText redacts Authorization Bearer tokens and handles keyless
   assert.ok(!text.includes('undefined'));
   assert.ok(!text.includes('$1'));
 });
+
+test('ContextPruner soft-trims and hard-clears correctly with FAIL outcome exemption', () => {
+  const shortEpisode = { ...baseEpisode(), notes: 'A'.repeat(100), outcome: 'PASS' };
+  const longEpisode = { ...baseEpisode(), notes: 'A'.repeat(800), outcome: 'PASS' };
+  const oversizedEpisode = { ...baseEpisode(), notes: 'A'.repeat(1500), outcome: 'PASS' };
+  const oversizedFailEpisode = { ...baseEpisode(), notes: 'A'.repeat(1500), outcome: 'FAIL' };
+
+  const prompt = formatEpisodesForPrompt([shortEpisode, longEpisode, oversizedEpisode, oversizedFailEpisode], {
+    prunerSoftTrimChars: 600,
+    prunerHardClearChars: 1200,
+    keepRecentEpisodes: 1, // only index 0 is protected
+  });
+
+  // Short episode is protected (index 0) or short enough, passes through sanitized
+  assert.ok(prompt.includes(`Lesson: ${shortEpisode.notes}`));
+
+  // Oversized episode (index 2) should be hard-cleared
+  assert.ok(prompt.includes('trimmed — episode outside protected tail'));
+
+  // Oversized FAIL episode (index 3) should be soft-trimmed, NOT hard-cleared
+  assert.ok(prompt.includes('A…A'));
+});
+
+test('decay scoring and fusion weighting with redistribution works correctly', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'rstack-memory-decay-'));
+  try {
+    await appendEpisode(dir, baseEpisode({ episode_id: 'ep-1', access_count: 5 }));
+    const matches = await recallEpisodes(dir, {
+      query: 'validator harness',
+      config: {
+        retrieval: 'fused',
+        decayEnabled: true,
+        minDecayScore: 0.01,
+        fusionWeights: { lexical: 0.5, entity: 0.5, semantic: 0.0 }
+      }
+    });
+
+    assert.ok(matches.length > 0);
+    assert.ok(matches[0].fusedScore > 0);
+    assert.ok(matches[0].decay_score > 0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

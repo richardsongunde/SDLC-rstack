@@ -13,21 +13,15 @@ export function startDashboardServer(projectRoot, runId, port = 3005) {
 
   const server = createServer(async (req, res) => {
     if (req.url === '/api/memory-health') {
-      const memDir = join(projectRoot, '.rstack', 'memory');
-      const episodesPath = join(memDir, 'episodes.jsonl');
-      let episodeCount = 0;
-      let storeSizeKb = 0;
-      if (existsSync(episodesPath)) {
-        try {
-          const { stat } = await import('node:fs/promises');
-          const s = await stat(episodesPath);
-          storeSizeKb = Math.round(s.size / 1024);
-          const raw = await readFile(episodesPath, 'utf8');
-          episodeCount = raw.split('\n').filter(Boolean).length;
-        } catch {}
+      try {
+        const { runMemoryDiagnostics } = await import('./memory-diagnostics.js');
+        const report = await runMemoryDiagnostics(projectRoot, runId);
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify(report));
+      } catch (err) {
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ episode_count: 0, store_size_kb: 0, signature_failures: [], recall_hit_rate: null }));
       }
-      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-      res.end(JSON.stringify({ episode_count: episodeCount, store_size_kb: storeSizeKb }));
       return;
     }
 
@@ -297,6 +291,8 @@ export function startDashboardServer(projectRoot, runId, port = 3005) {
           const memData = await memRes.json();
           document.getElementById('mem-count').innerText = memData.episode_count ?? '—';
           document.getElementById('mem-size').innerText = (memData.store_size_kb ?? 0) + ' KB';
+          document.getElementById('mem-sigfail').innerText = memData.signature_failures?.length ?? 0;
+          document.getElementById('mem-hitrate').innerText = memData.recall_hit_rate !== null ? memData.recall_hit_rate + '%' : '—';
         } catch {}
       } catch (err) {
         console.error('Failed to load live metrics', err);
@@ -361,6 +357,8 @@ export function startDashboardServer(projectRoot, runId, port = 3005) {
         <div id="mem-health" style="font-size: 13px; color: var(--text-muted); display: flex; flex-direction: column; gap: 8px;">
           <div>🧠 <strong>Episodes:</strong> <span id="mem-count">—</span></div>
           <div>💾 <strong>Store size:</strong> <span id="mem-size">—</span></div>
+          <div>⚠️ <strong>Signature Failures:</strong> <span id="mem-sigfail">—</span></div>
+          <div>📈 <strong>Recall Hit Rate:</strong> <span id="mem-hitrate">—</span></div>
         </div>
       </div>
     </div>

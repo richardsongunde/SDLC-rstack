@@ -9,8 +9,9 @@ const KNOWN_EVENT_TYPES = [
   'run_started', 'task_started', 'builder_task_prepared', 'task_validated',
   'stage_completed', 'approval_gate', 'approval_gate_blocked', 'guardrail_triggered',
   'tool_call', 'tool_result', 'cost_recorded', 'quality_score_recorded',
-  'memory_recalled', 'episode_memory_written', 'episode_memory_write_failed',
+  'memory_recalled', 'memory_pruned', 'episode_memory_written', 'episode_memory_write_failed',
   'session_shutdown', 'clarification_requested', 'clarification_answers_added', 'plan_created',
+  'validation_failed',
 ];
 
 // ── Low-level readers ────────────────────────────────────────────────────────

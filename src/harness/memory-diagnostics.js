@@ -20,9 +20,19 @@ function daysSince(isoDate) {
   return Math.max(0, ms / 86400000);
 }
 
-export async function runMemoryDiagnostics(memoryDir, options = {}) {
-  const staleAfterDays = options.staleAfterDays ?? 90;
-  const maxStoreSizeKb = options.maxStoreSizeKb ?? 2048;
+import { readMemoryConfig, projectMemoryDir } from './memory.js';
+
+export async function runMemoryDiagnostics(projectRoot, runId) {
+  let memoryDir = projectRoot;
+  let staleAfterDays = 90;
+  let maxStoreSizeKb = 2048;
+
+  if (projectRoot && (existsSync(join(projectRoot, 'package.json')) || existsSync(join(projectRoot, '.rstack')))) {
+    const memoryConfig = await readMemoryConfig(projectRoot);
+    memoryDir = projectMemoryDir(projectRoot, memoryConfig);
+    staleAfterDays = memoryConfig.staleAfterDays ?? 90;
+    maxStoreSizeKb = memoryConfig.maxStoreSizeKb ?? 2048;
+  }
 
   const episodesPath = join(memoryDir, 'episodes.jsonl');
   const episodes = await readJsonl(episodesPath);
@@ -72,12 +82,12 @@ export async function runMemoryDiagnostics(memoryDir, options = {}) {
     return noAccess && old;
   }).map((ep) => ep.episode_id);
   for (const id of staleCandidates) {
-    diagnostics.push({ type: 'stale_episode', severity: 'info', message: `Episode ${id} has never been accessed and is older than ${staleAfterDays} days`, episode_id: id });
+    diagnostics.push({ type: 'stale_episode', severity: 'warning', message: `Episode ${id} has never been accessed and is older than ${staleAfterDays} days`, episode_id: id });
   }
 
   // Oversized store
   if (storeSizeKb > maxStoreSizeKb) {
-    diagnostics.push({ type: 'oversized_store', severity: 'warning', message: `episodes.jsonl is ${storeSizeKb}KB (max recommended: ${maxStoreSizeKb}KB)` });
+    diagnostics.push({ type: 'oversized_store', severity: 'warning', message: `episodes.jsonl is ${storeSizeKb}KB (max recommended: ${maxStoreSizeKb}KB)`, episode_id: 'store' });
   }
 
   // Recall hit rate: read retrieval-events.jsonl

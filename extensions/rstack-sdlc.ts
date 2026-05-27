@@ -11,7 +11,7 @@ import { validateBuilderContract } from "../src/harness/contracts.js";
 import { appendEvidenceEvent } from "../src/harness/evidence.js";
 import { DEFAULT_HARNESS_GUARDRAILS, guardrailSummary } from "../src/harness/guardrails.js";
 import { prepareRunState, prepareStageFolders, createStageCheckpoint, rollbackStage } from "../src/harness/run-state.js";
-import { appendEpisode, appendLearning, episodeFromValidation, formatEpisodesForPrompt, projectMemoryDir, readMemoryConfig, recallEpisodes, searchLearnings, writeRetrievalEvent } from "../src/harness/memory.js";
+import { appendEpisode, appendLearning, episodeFromValidation, formatEpisodesForPrompt, projectMemoryDir, readMemoryConfig, recallEpisodes, sanitizeMemoryText, searchLearnings, writeRetrievalEvent } from "../src/harness/memory.js";
 import { buildRunReport, generateRunReport, renderDashboardHtml, renderTraceHtml } from "../src/harness/reporter.js";
 import { sendSlackNotification, formatSlackStageMessage, formatSlackTaskReportMessage } from "../src/harness/notifications.js";
 
@@ -682,6 +682,41 @@ async function builderPrompt(projectRoot: string, task: any, selected: RegistryI
       await writeRetrievalEvent(memoryDirPath, { task_id: task.id, agent_ids: agentIds, stage_ids: stageIds, episode_ids: episodes.map((episode: any) => episode.episode_id) });
       if (runId) {
         await appendEvent(projectRoot, runId, { type: "memory_recalled", task_id: task.id, count: episodes.length });
+        
+        // Detect memory pruning and append memory_pruned events
+        for (let i = 0; i < episodes.length; i++) {
+          const episode = episodes[i];
+          const isProtected = i < (memoryConfig.keepRecentEpisodes ?? 20);
+          const rawNotes = episode.notes || episode.approach || episode.task || '';
+          const sanitizedLarge = sanitizeMemoryText(rawNotes, 8000);
+          const len = sanitizedLarge.length;
+          
+          let pruneType: string | null = null;
+          const isFail = episode && (episode.outcome === 'FAIL' || episode.validator_status === 'FAIL');
+          if (!isProtected) {
+            if (len > (memoryConfig.prunerHardClearChars ?? 1200)) {
+              if (isFail) {
+                if (len > (memoryConfig.prunerSoftTrimChars ?? 600)) {
+                  pruneType = "soft-trim";
+                }
+              } else {
+                pruneType = "hard-clear";
+              }
+            } else if (len > (memoryConfig.prunerSoftTrimChars ?? 600)) {
+              pruneType = "soft-trim";
+            }
+          }
+          
+          if (pruneType) {
+            await appendEvent(projectRoot, runId, {
+              type: "memory_pruned",
+              task_id: task.id,
+              episode_id: episode.episode_id,
+              prune_type: pruneType,
+              original_size: len
+            });
+          }
+        }
       }
     }
   } catch {
@@ -1239,21 +1274,29 @@ export default function (pi: ExtensionAPI) {
           console.error("Failed to save stage checkpoint:", cpError);
         }
       } else {
-        // Emit guardrail event with canonical field names expected by buildRunReport
         const runDir = join(runsDir(projectRoot), manifest.run_id);
         const runEvents = await readJsonl(join(runDir, "events.jsonl"));
         const attemptCount = runEvents.filter((e: any) => e.type === "task_started" && e.task_id === task.id).length;
         const maxAttempts = DEFAULT_HARNESS_GUARDRAILS.maxTaskAttempts ?? 2;
-        await appendEvent(projectRoot, manifest.run_id, {
-          type: "guardrail_triggered",
-          limit_name: "maxTaskAttempts",
-          current_value: attemptCount,
-          limit_value: maxAttempts,
-          task_id: task.id,
-          // Legacy aliases for backward compat with sdlc_trace CLI renderer
-          limit: "maxTaskAttempts",
-          value: attemptCount,
-        });
+        if (attemptCount >= maxAttempts) {
+          await appendEvent(projectRoot, manifest.run_id, {
+            type: "guardrail_triggered",
+            limit_name: "maxTaskAttempts",
+            current_value: attemptCount,
+            limit_value: maxAttempts,
+            task_id: task.id,
+            // Legacy aliases for backward compat with sdlc_trace CLI renderer
+            limit: "maxTaskAttempts",
+            value: attemptCount,
+          });
+        } else {
+          await appendEvent(projectRoot, manifest.run_id, {
+            type: "validation_failed",
+            task_id: task.id,
+            attempt: attemptCount,
+            max_attempts: maxAttempts,
+          });
+        }
       }
       await appendEvidenceEvent(join(runsDir(projectRoot), manifest.run_id), {
         task_id: task.id,
