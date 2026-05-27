@@ -2,8 +2,92 @@ import { request } from 'node:https';
 
 // owner: RStack developed by Richardson Gunde
 
+function convertSlackToDiscord(slackPayload) {
+  if (!slackPayload || !slackPayload.attachments) return slackPayload;
+  const embeds = slackPayload.attachments.map((att) => {
+    const embed = {
+      color: att.color ? parseInt(att.color.replace('#', ''), 16) : 0,
+      fields: []
+    };
+    
+    let descriptionLines = [];
+    let footerText = '';
+
+    for (const block of (att.blocks || [])) {
+      if (block.type === 'section' && block.text) {
+        descriptionLines.push(block.text.text);
+      }
+      if (block.type === 'fields' && block.fields) {
+        for (const f of block.fields) {
+          const raw = f.text || '';
+          const parts = raw.split('\n');
+          const name = parts[0] ? parts[0].replace(/\*/g, '') : 'Detail';
+          const value = parts.slice(1).join('\n') || '—';
+          embed.fields.push({ name, value, inline: true });
+        }
+      }
+      if (block.type === 'context' && block.elements) {
+        footerText = block.elements.map(e => e.text || '').join(' | ');
+      }
+    }
+    
+    if (descriptionLines.length > 0) {
+      embed.description = descriptionLines.join('\n');
+    }
+    if (footerText) {
+      embed.footer = { text: footerText };
+    }
+    return embed;
+  });
+
+  return { embeds };
+}
+
+function convertSlackToTeams(slackPayload) {
+  if (!slackPayload || !slackPayload.attachments) return slackPayload;
+  const att = slackPayload.attachments[0];
+  const themeColor = att && att.color ? att.color.replace('#', '') : '3b82f6';
+  
+  const sections = [];
+  let summary = 'RStack SDLC Notification';
+
+  if (att && att.blocks) {
+    for (const block of att.blocks) {
+      if (block.type === 'section' && block.text) {
+        summary = block.text.text.replace(/\*/g, '');
+        sections.push({
+          activityTitle: block.text.text,
+          activitySubtitle: 'RStack System Event',
+          facts: []
+        });
+      }
+      if (block.type === 'fields' && block.fields) {
+        const currentSection = sections[sections.length - 1] || { facts: [] };
+        if (!sections.includes(currentSection)) {
+          sections.push(currentSection);
+        }
+        for (const f of block.fields) {
+          const raw = f.text || '';
+          const parts = raw.split('\n');
+          const name = parts[0] ? parts[0].replace(/\*/g, '') : 'Detail';
+          const value = parts.slice(1).join('\n') || '—';
+          currentSection.facts.push({ name, value });
+        }
+      }
+    }
+  }
+
+  return {
+    "@type": "MessageCard",
+    "@context": "http://schema.org/extensions",
+    themeColor,
+    summary,
+    sections
+  };
+}
+
 /**
- * Dispatches an HTTP POST payload to the Slack Webhook URL.
+ * Dispatches an HTTP POST payload to the Slack, Teams, or Discord Webhook URL.
  * Fails gracefully by logging to console if the webhook is not configured.
  */
 export async function sendSlackNotification(webhookUrl, payload) {
@@ -12,10 +96,17 @@ export async function sendSlackNotification(webhookUrl, payload) {
     return 'unconfigured';
   }
 
+  let finalPayload = payload;
+  if (webhookUrl.includes('discord.com')) {
+    finalPayload = convertSlackToDiscord(payload);
+  } else if (webhookUrl.includes('office.com') || webhookUrl.includes('webhook.office.com')) {
+    finalPayload = convertSlackToTeams(payload);
+  }
+
   return new Promise((resolve, reject) => {
     try {
       const url = new URL(webhookUrl);
-      const data = JSON.stringify(payload);
+      const data = JSON.stringify(finalPayload);
 
       const options = {
         hostname: url.hostname,
@@ -36,7 +127,7 @@ export async function sendSlackNotification(webhookUrl, payload) {
           if (res.statusCode >= 200 && res.statusCode < 300) {
             resolve(body || 'ok');
           } else {
-            reject(new Error(`Slack post failed with status: ${res.statusCode}. Body: ${body}`));
+            reject(new Error(`Webhook post failed with status: ${res.statusCode}. Body: ${body}`));
           }
         });
       });

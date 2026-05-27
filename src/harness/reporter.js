@@ -94,10 +94,13 @@ export async function buildRunReport(runDir) {
     }
   }
 
-  // Load per-task validation.json
+  // Load per-task validation.json and builder.json
   for (const [taskId, trace] of Object.entries(taskTraces)) {
     const taskDir = join(runDir, 'tasks', taskId);
-    if (existsSync(taskDir)) trace.validation = await readJson(join(taskDir, 'validation.json'), null);
+    if (existsSync(taskDir)) {
+      trace.validation = await readJson(join(taskDir, 'validation.json'), null);
+      trace.builder = await readJson(join(taskDir, 'builder.json'), null);
+    }
   }
 
   // Aggregate guardrail hits by limit name
@@ -123,6 +126,10 @@ export async function buildRunReport(runDir) {
     if (Number.isFinite(t0) && Number.isFinite(t1)) durationMs = Math.max(0, t1 - t0);
   }
 
+  // Load requirements spec
+  const requirements = await readJson(join(runDir, 'specs', 'requirements.json'), null);
+  const memoryAuthentic = !events.some((ev) => ev.type === 'episode_memory_write_failed');
+
   return {
     run_id:   manifest.run_id ?? 'unknown',
     goal:     manifest.goal ?? '',
@@ -133,6 +140,8 @@ export async function buildRunReport(runDir) {
     events,
     tasks: taskTraces,
     approvals,
+    requirements,
+    memory_authentic: memoryAuthentic,
     guardrail_summary: guardrailSummary,
     cost_summary: costSummary,
     quality_scores: events.filter((ev) => ev.type === 'quality_score_recorded'),
@@ -211,13 +220,26 @@ export function renderDashboardHtml(report) {
   const totalTools     = tasks.reduce((s, t) => s + t.tool_call_count, 0);
   const totalGuardrail = tasks.reduce((s, t) => s + t.guardrail_hit_count, 0);
 
+  const ledgerStatus = report.memory_authentic ? '🟢 SECURED' : '⚠️ COMPROMISED';
+
   const taskRows = tasks.map((t) => {
     const memRecall = t.memory_events.filter((e) => e.type === 'memory_recalled').reduce((s, e) => s + (e.count ?? e.episode_count ?? 0), 0);
     const memWrite  = t.memory_events.filter((e) => e.type === 'episode_memory_written').length;
     const memFail   = t.memory_events.filter((e) => e.type === 'episode_memory_write_failed').length;
     const memStatus = `${memRecall}&nbsp;recalled&nbsp;/&nbsp;${memWrite}&nbsp;written${memFail > 0 ? `&nbsp;(<span class="warn">${memFail}&nbsp;failed</span>)` : ''}`;
+    
+    const agentName = t.builder ? (t.builder.agent ?? 'orchestrator') : 'orchestrator';
+    const attemptVal = t.builder ? (t.builder.attempt ?? '1') : '1';
+    const filesMod = t.builder && t.builder.files_modified ? t.builder.files_modified : [];
+    const filesText = filesMod.length > 0
+      ? `<details style="cursor:pointer;"><summary style="color:var(--blue)">${filesMod.length} file(s)</summary><div class="mono" style="font-size:9.5px;margin-top:2.5px;color:var(--dim);line-height:1.2;">${filesMod.map(f => esc(f.split('/').pop())).join('<br/>')}</div></details>`
+      : '<span class="dim">—</span>';
+
     return `<tr>
       <td class="mono">${esc(t.task_id)}</td>
+      <td class="mono" style="color:var(--violet)">${esc(agentName)}</td>
+      <td class="num">${attemptVal}</td>
+      <td>${filesText}</td>
       <td>${pill(t.status)}</td>
       <td class="num">${t.tool_call_count}</td>
       <td class="num">${t.guardrail_hit_count > 0 ? `<span class="warn">${t.guardrail_hit_count}</span>` : '0'}</td>
@@ -310,7 +332,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:rgba(255,255,255,.025
   <div class="kpis">
     <div class="kpi pass"><div class="kv">${passCount}</div><div class="kl">Tasks Pass</div></div>
     <div class="kpi fail"><div class="kv">${failCount}</div><div class="kl">Tasks Fail</div></div>
-    <div class="kpi active"><div class="kv">${activeCount}</div><div class="kl">Pending/Active</div></div>
+    <div class="kpi active"><div class="kv" style="font-size:16px;line-height:30px;">${ledgerStatus}</div><div class="kl">Memory Ledger</div></div>
     <div class="kpi warn"><div class="kv">${totalGuardrail}</div><div class="kl">Guardrail Hits</div></div>
     <div class="kpi info"><div class="kv">${totalTools}</div><div class="kl">Tool Calls</div></div>
     <div class="kpi cost"><div class="kv">$${report.cost_summary.total_usd.toFixed(4)}</div><div class="kl">Recorded Cost</div></div>
@@ -332,12 +354,13 @@ tr:last-child td{border-bottom:none}tr:hover td{background:rgba(255,255,255,.025
       <div class="tab" onclick="st(this,'events')">Event Stream</div>
       <div class="tab" onclick="st(this,'guardrails')">Guardrails</div>
       <div class="tab" onclick="st(this,'approvals')">Approvals</div>
+      <div class="tab" onclick="st(this,'traceability')">Traceability Explorer</div>
     </div>
     <div id="tp-tasks" class="tp active"><table>
-      <thead><tr><th>Task ID</th><th>Status</th><th style="text-align:right">Tool Calls</th>
+      <thead><tr><th>Task ID</th><th>Specialist</th><th>Attempt</th><th>Files Modified</th><th>Status</th><th style="text-align:right">Tool Calls</th>
         <th style="text-align:right">Guardrail Hits</th><th>Memory</th>
         <th style="text-align:right">Evidence</th><th>Validation</th></tr></thead>
-      <tbody>${taskRows || '<tr><td colspan="7" class="dim">No tasks yet.</td></tr>'}</tbody>
+      <tbody>${taskRows || '<tr><td colspan="10" class="dim">No tasks yet.</td></tr>'}</tbody>
     </table></div>
     <div id="tp-events" class="tp"><table>
       <thead><tr><th>Timestamp</th><th>Type</th><th>Details</th></tr></thead>
@@ -351,6 +374,13 @@ tr:last-child td{border-bottom:none}tr:hover td{background:rgba(255,255,255,.025
       <thead><tr><th>Artifact</th><th>Status</th><th>Timestamp</th><th>Comments</th></tr></thead>
       <tbody>${apRows}</tbody>
     </table></div>
+    <div id="tp-traceability" class="tp" style="padding:16px 20px;">
+      <h3 style="margin-bottom:12px;color:var(--accent);">Enterprise Traceability Explorer</h3>
+      <p class="dim" style="margin-bottom:20px;">Maps active product requirements to architecture elements, validation tasks, modified source code files, and final verify evidence.</p>
+      <div style="background:#0d1117;border:1px solid var(--border);border-radius:8px;padding:16px 20px;">
+        ${renderTraceabilityTree(report)}
+      </div>
+    </div>
   </div>
   <div class="gat">Generated ${new Date().toISOString()} · RStack developed by Richardson Gunde</div>
 </div>
@@ -515,4 +545,48 @@ function pairToolEvents(calls, results) {
   const map = {};
   for (const r of results) (map[r.tool ?? '__'] ??= []).push(r);
   return calls.map((call) => ({ call, result: (map[call.tool ?? '__'] ?? []).shift() ?? null }));
+}
+
+function renderTraceabilityTree(report) {
+  const reqs = report.requirements;
+  const tasks = Object.values(report.tasks);
+  
+  if (reqs && reqs.requirements && reqs.requirements.length > 0) {
+    return reqs.requirements.map(req => {
+      const associatedTasks = tasks.filter(t => t.task_id.includes(req.id) || (req.stages && req.stages.some(s => t.task_id.includes(s))));
+      const taskNodes = associatedTasks.map(t => {
+        const files = t.builder && t.builder.files_modified ? t.builder.files_modified : [];
+        const filesHtml = files.map(f => `<div style="padding-left:24px;color:var(--blue);">📝 File: ${esc(f.split('/').pop())}</div>`).join('');
+        const statusIcon = t.status === 'PASS' ? '🟢' : '🔴';
+        return `<div style="padding-left:24px;margin-bottom:4px;">
+          ${statusIcon} <b>Task:</b> ${esc(t.task_id)} (${t.status ?? 'READY'})
+          ${filesHtml}
+        </div>`;
+      }).join('') || '<div style="padding-left:24px;color:var(--dim);">No executing tasks yet.</div>';
+
+      return `<div style="margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px;">
+        <div style="font-weight:700;color:var(--accent);margin-bottom:6px;">📋 ${esc(req.id)}: ${esc(req.title)}</div>
+        <div class="dim" style="font-size:11.5px;padding-left:14px;margin-bottom:8px;">${esc(req.description)}</div>
+        ${taskNodes}
+      </div>`;
+    }).join('');
+  }
+
+  // Fallback beautiful traceability pipeline map for runs without explicit specs loaded yet
+  const pipelineNodes = tasks.map(t => {
+    const statusIcon = t.status === 'PASS' ? '🟢' : '🔴';
+    const files = t.builder && t.builder.files_modified ? t.builder.files_modified : [];
+    const filesHtml = files.map(f => `<div style="padding-left:24px;color:var(--blue);font-family:var(--m);font-size:11px;">➔ file: ${esc(f.split('/').pop())}</div>`).join('');
+    const evHtml = t.validation && t.validation.checks
+      ? t.validation.checks.map(c => `<div style="padding-left:24px;color:var(--pass);font-size:11px;">✔ evidence: ${esc(c.name)}</div>`).join('')
+      : '';
+    return `<div style="margin-bottom:10px;padding-left:14px;border-left:2px solid var(--border);">
+      <div style="font-weight:600;color:var(--text);">${statusIcon} Pipeline Stage: ${esc(t.task_id)} (${t.status ?? 'READY'})</div>
+      ${filesHtml}
+      ${evHtml}
+    </div>`;
+  }).join('');
+
+  return `<div style="margin-bottom:12px;font-weight:700;color:var(--blue);">Active Pipeline Trace Ledger</div>
+          ${pipelineNodes || '<p class="dim">No active execution trace ledger found.</p>'}`;
 }
