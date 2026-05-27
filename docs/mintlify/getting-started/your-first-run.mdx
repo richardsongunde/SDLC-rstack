@@ -1,0 +1,184 @@
+---
+title: "Your First Run"
+description: "Walk through a complete RStack SDLC run from goal to release readiness."
+---
+
+This guide walks through a complete RStack run using the Pi native adapter. The same lifecycle applies to all adapters — only the tool invocation syntax differs.
+
+## 1. Load the orchestrator
+
+Start every run by loading the RStack orchestrator for your goal:
+
+```text
+sdlc_orchestrate(goal="Build a production-ready REST API with authentication and tests")
+```
+
+This injects the orchestrator, builder, and validator operating instructions so the agent knows how to behave throughout the lifecycle.
+
+## 2. Start a run
+
+```text
+sdlc_start(goal="Build a production-ready REST API with authentication and tests")
+```
+
+RStack creates a new run directory:
+
+```text
+.rstack/runs/
+  run_20240525_001/
+    manifest.json         ← run metadata
+    context.md            ← goal and environment context
+```
+
+## 3. Clarify requirements
+
+If the goal is ambiguous, RStack asks product-owner questions:
+
+```text
+sdlc_clarify()
+```
+
+This captures decisions like:
+- Which framework? (Express, Fastify, etc.)
+- Which database?
+- What auth strategy? (JWT, OAuth, etc.)
+- Target deployment environment?
+
+## 4. Plan
+
+```text
+sdlc_plan()
+```
+
+RStack generates:
+
+```text
+.rstack/runs/run_20240525_001/
+  plan.md                 ← delivery plan
+  tasks.json              ← task breakdown with acceptance criteria
+  specs/
+    product-brief.md
+    requirements.json
+    architecture.md
+  traceability.json
+```
+
+## 5. Review and approve
+
+Review the generated specs, then record your human approval gates:
+
+```text
+sdlc_approve(artifact="plan.md", status="APPROVED")
+sdlc_approve(artifact="requirements.json", status="APPROVED")
+sdlc_approve(artifact="architecture.md", status="APPROVED")
+```
+
+<Warning>
+  RStack will not execute implementation tasks until plan and requirements are approved in interactive mode. This is intentional — it keeps you as the product owner.
+</Warning>
+
+## 6. Check available agents
+
+```text
+sdlc_agents()
+```
+
+This lists the packaged and project-local agents, skills, and plugins that will be used for your run.
+
+## 7. Build
+
+Repeatedly call `sdlc_build_next` to execute tasks one at a time:
+
+```text
+sdlc_build_next()
+```
+
+Each call:
+1. Selects the next pending task
+2. Assembles a task packet with the right agents, skills, and plugins
+3. Executes using the builder team
+4. Writes `builder.json` as a contract
+
+## 8. Validate
+
+After each build step, validate the output:
+
+```text
+sdlc_validate()
+```
+
+The validator team (read-only tools by default) checks:
+- Does output meet acceptance criteria?
+- Are tests passing?
+- Is security review satisfied?
+
+Writes `validation.json` to the task directory.
+
+## 9. Check status
+
+At any point:
+
+```text
+sdlc_status()
+```
+
+Returns a dashboard of:
+- Completed vs pending tasks
+- Missing approval gates
+- Registry counts
+- Next recommended action
+
+## 10. Save learnings
+
+At the end of every run:
+
+```text
+sdlc_memory()
+```
+
+Appends key learnings to `.rstack/memory/learnings.jsonl` for use in future runs.
+
+---
+
+## Run state layout
+
+After a complete run, your `.rstack/` looks like:
+
+```text
+.rstack/
+  memory/
+    learnings.jsonl
+  registry/
+    registry.json
+    agents.json
+    skills.json
+    plugins.json
+    routing.json
+  runs/
+    run_20240525_001/
+      manifest.json
+      context.md
+      plan.md
+      tasks.json
+      approvals.json
+      traceability.json
+      events.jsonl
+      specs/
+        product-brief.md
+        requirements.json
+        architecture.md
+        implementation-report.json
+        qa-report.json
+        security-review.md
+        handoff.md
+        release-readiness.json
+      tasks/
+        task_001/
+          prompt.md
+          builder.json
+          validation.json
+        task_002/
+          ...
+```
+
+Every artifact is inspectable, versioned with the run, and traceable from requirements to evidence.

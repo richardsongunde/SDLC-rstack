@@ -1,0 +1,44 @@
+---
+title: "Agent 12 — Security Threat Model"
+description: "STRIDE threat modeling agent. Produces threat_model.json with risk scores and specific mitigations."
+---
+
+<Info>
+  **File:** `agents/sdlc/12-security-threat-model.md` · **Model:** Opus · **Tools:** Bash, Read, Write, Grep
+</Info>
+
+## Purpose
+
+The security agent produces a STRIDE threat model grounded in the actual architecture — not generic security advice. Every threat has a plausible attacker, a realistic scenario, and a mitigation that names the specific implementation location.
+
+## Core principle
+
+> A threat without a realistic exploit path is noise. A mitigation without a specific implementation location is advice.
+
+## STRIDE categories
+
+| Category | Description |
+|---|---|
+| **S**poofing | Attacker impersonates a legitimate user or service |
+| **T**ampering | Attacker modifies data in transit or at rest |
+| **R**epudiation | Actor denies performing an action |
+| **I**nformation Disclosure | Sensitive data exposed to unauthorized parties |
+| **D**enial of Service | Service made unavailable |
+| **E**levation of Privilege | User gains higher permissions than intended |
+
+## Outputs
+
+```json
+// .rstack/runs/<run_id>/specs/security-review.md + threat_model.json
+{
+  "threats": [
+    {
+      "id": "T-001",
+      "category": "Elevation of Privilege",
+      "description": "JWT does not encode tenant_id — attacker reuses valid token to access another tenant's data",
+      "risk_score": "CRITICAL",
+      "mitigation": "Include tenant_id claim in JWT payload; validate in auth middleware at src/middleware/auth.js"
+    }
+  ]
+}
+```

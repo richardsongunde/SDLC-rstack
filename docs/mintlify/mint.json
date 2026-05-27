@@ -1,0 +1,125 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "RStack SDLC",
+  "logo": {
+    "dark": "/assets/logo-dark.svg",
+    "light": "/assets/logo-light.svg"
+  },
+  "favicon": "/assets/favicon.svg",
+  "colors": {
+    "primary": "#6366F1",
+    "light": "#818CF8",
+    "dark": "#4338CA",
+    "anchors": {
+      "from": "#6366F1",
+      "to": "#818CF8"
+    }
+  },
+  "topbarLinks": [
+    {
+      "name": "GitHub",
+      "url": "https://github.com/richard-devbot/SDLC-rstack"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "npm install",
+    "url": "https://www.npmjs.com/package/rstack-agents"
+  },
+  "tabs": [
+    {
+      "name": "Documentation",
+      "url": "/"
+    },
+    {
+      "name": "API Reference",
+      "url": "reference"
+    }
+  ],
+  "anchors": [
+    {
+      "name": "GitHub",
+      "icon": "github",
+      "url": "https://github.com/richard-devbot/SDLC-rstack"
+    },
+    {
+      "name": "npm",
+      "icon": "npm",
+      "url": "https://www.npmjs.com/package/rstack-agents"
+    },
+    {
+      "name": "Issues",
+      "icon": "circle-exclamation",
+      "url": "https://github.com/richard-devbot/SDLC-rstack/issues"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Overview",
+      "pages": [
+        "introduction",
+        "quickstart",
+        "architecture"
+      ]
+    },
+    {
+      "group": "Getting Started",
+      "pages": [
+        "getting-started/installation",
+        "getting-started/your-first-run",
+        "getting-started/governance-model"
+      ]
+    },
+    {
+      "group": "Core Concepts",
+      "pages": [
+        "concepts/overview",
+        "concepts/orchestrator-builder-validator",
+        "concepts/state-management",
+        "concepts/plugins-and-skills"
+      ]
+    },
+    {
+      "group": "SDLC Pipeline",
+      "pages": [
+        "sdlc-pipeline/overview",
+        "sdlc-pipeline/environment",
+        "sdlc-pipeline/transcript",
+        "sdlc-pipeline/requirements",
+        "sdlc-pipeline/architecture",
+        "sdlc-pipeline/code",
+        "sdlc-pipeline/testing",
+        "sdlc-pipeline/deployment",
+        "sdlc-pipeline/security",
+        "sdlc-pipeline/compliance",
+        "sdlc-pipeline/cost-estimation"
+      ]
+    },
+    {
+      "group": "Adapters",
+      "pages": [
+        "adapters/pi",
+        "adapters/claude-code",
+        "adapters/codex",
+        "adapters/gemini",
+        "adapters/universal"
+      ]
+    },
+    {
+      "group": "Reference",
+      "pages": [
+        "reference/cli",
+        "reference/pi-tools",
+        "reference/configuration",
+        "reference/protected-actions"
+      ]
+    }
+  ],
+  "footerSocials": {
+    "github": "https://github.com/richard-devbot/SDLC-rstack"
+  },
+  "feedback": {
+    "thumbsRating": true,
+    "suggestEdit": true,
+    "raiseIssue": true
+  }
+}

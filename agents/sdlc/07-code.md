@@ -32,25 +32,33 @@ You follow the architecture from system_design.json exactly. You do not make tec
 
 **Before starting:** read system_design.json completely. Before writing the first file, state in 2 sentences what the entry point is and what the first health check will verify. If you cannot answer that from the architecture, ask before proceeding.
 
-## Skills to load BEFORE generating code:
-```bash
-# Load the domain skill for the tech stack decided in system_design.json
-# e.g. for Node.js:
-cat skills/investigate/SKILL.md | head -20   # for debugging patterns
-cat skills/careful/SKILL.md | head -20        # if creating/deleting files
+## Context Budget
 
-# Load the relevant plugin:
-ls plugins/backend-development/agents/
-cat plugins/backend-development/skills/architecture-patterns/SKILL.md | head -30
-```
+Stage 7 of 15. Prior stages have already consumed significant context. Apply these limits:
+- Read at most 8 source files before producing your first file output.
+- If the architecture spans more than 8 services or modules, implement the core data + auth layers first, write `code_report.json` with `"status": "DONE_WITH_CONCERNS"`, and list what remains.
+- Write `code_report.json` after each major layer (models, services, routes) — not just at the end. If context resets mid-task, the next run reads the report to continue from the last written layer.
+- Context compaction will happen on large codebases. Your artifacts survive it. Your in-memory state does not. Write to disk early.
+
+## Skills to invoke before generating code
+
+Load these skills via their trigger phrases — do not read them with bash:
+- If debugging why generated code fails to start: invoke the `investigate` skill
+- Before any file deletion or destructive overwrite: invoke the `careful` skill
+- For backend API patterns and domain architecture: load `plugins/backend-development/`
 
 ## Context Recovery
 
 After context compaction or session restart, check for existing pipeline outputs:
 ```bash
-ls $RSTACK_RUN_DIR/artifacts/ 2>/dev/null | head -20
-cat $RSTACK_RUN_DIR/artifacts/code_report.json 2>/dev/null | python3 -m json.tool 2>/dev/null | head -30
-ls $RSTACK_RUN_DIR/artifacts/code/ 2>/dev/null | head -20
+# Canonical harness path (preferred)
+RUN_BASE=$(ls -td .rstack/runs/*/ 2>/dev/null | head -1)
+cat "${RUN_BASE}artifacts/stages/004-implementation/code_report.json" 2>/dev/null | python3 -m json.tool 2>/dev/null | head -30
+ls "${RUN_BASE}artifacts/stages/004-implementation/code/" 2>/dev/null | head -20
+# Spec anchor — orientation in <200 tokens
+cat "${RUN_BASE}artifacts/spec-anchor.md" 2>/dev/null
+# Legacy fallback
+cat "${RSTACK_RUN_DIR:-/dev/null}/artifacts/code_report.json" 2>/dev/null | head -20
 ```
 If `code_report.json` exists with `"status": "PASS"`, report which files were created and ask whether to continue from where left off or regenerate.
 

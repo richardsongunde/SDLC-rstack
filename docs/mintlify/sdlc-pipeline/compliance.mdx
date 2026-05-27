@@ -1,0 +1,57 @@
+---
+title: "Agent 13 — Compliance Checker"
+description: "Maps requirements to compliance controls (GDPR, HIPAA, SOC 2, PCI-DSS) and produces compliance_report.json."
+---
+
+<Info>
+  **File:** `agents/sdlc/13-compliance-checker.md` · **Model:** Sonnet · **Tools:** Bash, Read, Write, Grep
+</Info>
+
+## Purpose
+
+The compliance agent audits the architecture and requirements against applicable regulatory frameworks. Compliance scores are grounded in actual implementation evidence — not policy documents.
+
+## Core principle
+
+> A policy document that says "all PHI is encrypted at rest" and a database with an unencrypted backup bucket are not compliant.
+
+## Supported frameworks
+
+- **GDPR** — Data protection, consent, right to erasure
+- **HIPAA** — Protected health information safeguards
+- **SOC 2** — Security, availability, confidentiality controls
+- **PCI-DSS** — Payment card data security
+
+## Control verdicts
+
+| Verdict | Meaning |
+|---|---|
+| `PASS` | Control implemented with evidence |
+| `PARTIAL` | Partially implemented; gaps documented |
+| `FAIL` | Control not implemented; remediation required |
+| `N/A` | Control not applicable to this system |
+
+## Outputs
+
+```json
+// .rstack/runs/<run_id>/specs/compliance_report.json
+{
+  "framework": "GDPR",
+  "overall_score": "PARTIAL",
+  "controls": [
+    {
+      "id": "GDPR-Art-32",
+      "title": "Encryption of personal data",
+      "verdict": "PASS",
+      "evidence": "TLS 1.3 in transit; AES-256 at rest per system_design.json"
+    },
+    {
+      "id": "GDPR-Art-17",
+      "title": "Right to erasure",
+      "verdict": "FAIL",
+      "gap": "No user data deletion endpoint in architecture",
+      "remediation": "Add DELETE /users/:id endpoint with cascade delete"
+    }
+  ]
+}
+```

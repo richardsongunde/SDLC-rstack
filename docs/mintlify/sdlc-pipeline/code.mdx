@@ -1,0 +1,51 @@
+---
+title: "Agent 07 — Code"
+description: "Code generation agent. Produces actual working code scaffolding — not pseudocode."
+---
+
+<Info>
+  **File:** `agents/sdlc/07-code.md` · **Model:** Opus · **Tools:** Bash, Read, Write, Edit
+</Info>
+
+## Purpose
+
+The code agent generates real, production-grade scaffolding that follows the architecture exactly. Not pseudocode. Not stubs. Every route has a handler, every handler has error handling, and every database call has connection validation.
+
+## Core principle
+
+> A stubbed codebase is not a codebase. The test suite will run against this output. If it fails to start, every downstream agent fails with it.
+
+## What it does
+
+1. Reads `system_design.json`
+2. Generates working code for every component in the architecture
+3. Wires up error handling, environment variable validation, and health endpoints
+4. Runs tests before claiming done
+5. Writes `code_report.json`
+
+## Output structure
+
+```text
+src/
+  index.js              ← Entry point, starts cleanly
+  routes/               ← All route handlers
+  middleware/           ← Auth, validation, error handling
+  services/             ← Business logic
+  models/               ← Database models/schema
+  config/               ← Environment validation
+tests/
+  *.test.js             ← Tests that pass
+.env.example            ← All required vars documented
+```
+
+```json
+// .rstack/runs/<run_id>/tasks/<task_id>/builder.json
+{
+  "task_id": "task_007",
+  "status": "COMPLETE",
+  "files_changed": ["src/routes/auth.js", "tests/auth.test.js"],
+  "acceptance_criteria_met": true,
+  "commands_run": ["npm test", "npm start"],
+  "notes": "All 24 tests passing. App starts on port 3000."
+}
+```

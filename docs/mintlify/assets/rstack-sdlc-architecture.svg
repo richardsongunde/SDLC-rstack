@@ -1,0 +1,450 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1420 860" width="100%" height="100%">
+  <defs>
+    <!-- Styles -->
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap');
+      text {
+        font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      }
+      .main-title { font-weight: 700; font-size: 24px; fill: #0F172A; }
+      .main-subtitle { font-weight: 500; font-size: 13px; fill: #64748B; }
+      .section-title { font-weight: 700; font-size: 13.5px; fill: #1E293B; }
+      .card-title { font-weight: 600; font-size: 12px; fill: #0F172A; }
+      .card-subtitle { font-weight: 500; font-size: 10px; fill: #64748B; }
+      .bullet-text { font-weight: 400; font-size: 9.5px; fill: #334155; }
+      .flow-label { font-weight: 600; font-size: 9.5px; fill: #475569; }
+      
+      /* Dashboard styles */
+      .dash-title { font-weight: 700; font-size: 13px; fill: #0F172A; }
+      .dash-value { font-weight: 700; font-size: 16px; fill: #1E293B; }
+      .dash-label { font-weight: 600; font-size: 10px; fill: #64748B; }
+      
+      .g-card { transition: transform 0.2s ease-in-out; }
+      .g-card:hover { transform: translateY(-2px); }
+    </style>
+
+    <!-- Filters -->
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#0F172A" flood-opacity="0.06" />
+    </filter>
+    <filter id="card-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#0F172A" flood-opacity="0.04" />
+    </filter>
+
+    <!-- Gradients -->
+    <linearGradient id="blue-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F5F9FF" />
+      <stop offset="100%" stop-color="#E1EFFE" />
+    </linearGradient>
+    <linearGradient id="orange-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFAF5" />
+      <stop offset="100%" stop-color="#FFF3E0" />
+    </linearGradient>
+    <linearGradient id="purple-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FAF5FF" />
+      <stop offset="100%" stop-color="#F3E8FF" />
+    </linearGradient>
+    <linearGradient id="teal-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F0FDF4" />
+      <stop offset="100%" stop-color="#DCFCE7" />
+    </linearGradient>
+
+    <!-- Arrow markers -->
+    <marker id="arr-blue" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#2563EB" />
+    </marker>
+    <marker id="arr-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#EA580C" />
+    </marker>
+    <marker id="arr-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#16A34A" />
+    </marker>
+    <marker id="arr-purple" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#7C3AED" />
+    </marker>
+  </defs>
+
+  <!-- Canvas Background -->
+  <rect width="100%" height="100%" fill="#F8FAFC" />
+
+  <!-- ==================== HEADER SECTION ==================== -->
+  <g transform="translate(45, 45)">
+    <text x="0" y="0" class="main-title">RStack SDLC — Pitch-Ready Business Architecture</text>
+    <text x="0" y="20" class="main-subtitle">Governed AI Software Delivery Harness with Continuous Traceability, Gated Workspaces, &amp; Team Alerts</text>
+  </g>
+
+
+  <!-- ==================== WEB ARTIFACT: BROWSER DASHBOARD MOCKUP ==================== -->
+  <g transform="translate(260, 90)" filter="url(#shadow)">
+    <!-- Browser Window Frame -->
+    <rect width="900" height="210" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" />
+    <!-- Browser Header Bar -->
+    <path d="M 0 14 A 14 14 0 0 1 14 0 L 886 0 A 14 14 0 0 1 900 14 L 900 36 L 0 36 Z" fill="#F1F5F9" stroke="#E2E8F0" stroke-width="1" />
+    <!-- Three window dots -->
+    <circle cx="20" cy="18" r="6" fill="#EF4444" />
+    <circle cx="38" cy="18" r="6" fill="#F59E0B" />
+    <circle cx="56" cy="18" r="6" fill="#10B981" />
+    <!-- URL Bar -->
+    <rect x="90" y="8" width="720" height="20" rx="6" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+    <text x="105" y="22" font-size="10px" fill="#64748B" font-family="monospace">rstack.sdlc.dev/runs/run-9a3c/dashboard</text>
+
+    <!-- Sidebar Info Panel inside browser -->
+    <g transform="translate(20, 56)">
+      <text x="0" y="16" class="dash-title">AI Harness Dashboard</text>
+      <text x="0" y="34" class="dash-label">ACTIVE GOAL</text>
+      <text x="0" y="48" class="bullet-text" style="font-weight:600;">Secure API Harness &amp; Deploy</text>
+      <text x="0" y="66" class="dash-label">RUN MODE</text>
+      <rect x="0" y="72" width="130" height="18" rx="4" fill="#EFF6FF" />
+      <text x="10" y="85" font-size="9.5px" fill="#2563EB" style="font-weight:700;">GOVERNED INTERACTIVE</text>
+    </g>
+
+    <line x1="180" y1="56" x2="180" y2="190" stroke="#F1F5F9" stroke-width="1.5" />
+
+    <!-- Progress Tracker Widget -->
+    <g transform="translate(205, 56)">
+      <text x="0" y="16" class="dash-label">SDLC COMPILATION PIPELINE</text>
+      <text x="0" y="38" class="dash-value">11 / 15 Stages Completed</text>
+      
+      <!-- Custom Progress Bar -->
+      <rect x="0" y="52" width="320" height="8" rx="4" fill="#E2E8F0" />
+      <rect x="0" y="52" width="234" height="8" rx="4" fill="#2563EB" />
+      
+      <!-- Stage Badges -->
+      <rect x="0" y="72" width="48" height="16" rx="3" fill="#DCFCE7" />
+      <text x="24" y="83" font-size="8.5px" fill="#15803D" style="font-weight:700;" text-anchor="middle">02-REQ</text>
+
+      <rect x="54" y="72" width="52" height="16" rx="3" fill="#DCFCE7" />
+      <text x="80" y="83" font-size="8.5px" fill="#15803D" style="font-weight:700;" text-anchor="middle">06-ARCH</text>
+
+      <rect x="112" y="72" width="48" height="16" rx="3" fill="#EFF6FF" />
+      <text x="136" y="83" font-size="8.5px" fill="#1D4ED8" style="font-weight:700;" text-anchor="middle">07-CODE</text>
+
+      <rect x="166" y="72" width="48" height="16" rx="3" fill="#F1F5F9" />
+      <text x="190" y="83" font-size="8.5px" fill="#64748B" style="font-weight:700;" text-anchor="middle">09-DEP</text>
+    </g>
+
+    <line x1="560" y1="56" x2="560" y2="190" stroke="#F1F5F9" stroke-width="1.5" />
+
+    <!-- Harness Live Metrics Grid -->
+    <g transform="translate(585, 56)">
+      <text x="0" y="16" class="dash-label">HARNESS LIVE POLICY AUDIT</text>
+      
+      <!-- Metric 1: Budget -->
+      <g transform="translate(0, 30)">
+        <rect width="135" height="42" rx="6" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1" />
+        <text x="12" y="18" font-size="9px" fill="#64748B" style="font-weight:600;">TOKEN COMPUTING SPEND</text>
+        <text x="12" y="33" font-size="13px" fill="#15803D" style="font-weight:700;">$0.14 / $5.00 limit</text>
+      </g>
+
+      <!-- Metric 2: Security -->
+      <g transform="translate(150, 30)">
+        <rect width="135" height="42" rx="6" fill="#FEF2F2" stroke="#FEE2E2" stroke-width="1" />
+        <text x="12" y="18" font-size="9px" fill="#991B1B" style="font-weight:600;">SHIELD SANDBOX STATS</text>
+        <text x="12" y="33" font-size="13px" fill="#DC2626" style="font-weight:700;">0 blocked threats</text>
+      </g>
+
+      <!-- Metric 3: Gated Workers -->
+      <g transform="translate(0, 80)">
+        <rect width="135" height="42" rx="6" fill="#FAF5FF" stroke="#E9D5FF" stroke-width="1" />
+        <text x="12" y="18" font-size="9px" fill="#6B21A8" style="font-weight:600;">ACTIVE DELEGATES</text>
+        <text x="12" y="33" font-size="13px" fill="#7C3AED" style="font-weight:700;">1 Build · 1 Valid</text>
+      </g>
+
+      <!-- Metric 4: Traceability -->
+      <g transform="translate(150, 80)">
+        <rect width="135" height="42" rx="6" fill="#F0FDF4" stroke="#DCFCE7" stroke-width="1" />
+        <text x="12" y="18" font-size="9px" fill="#165B33" style="font-weight:600;">TRACEABILITY LINKAGE</text>
+        <text x="12" y="33" font-size="13px" fill="#16A34A" style="font-weight:700;">VERIFIED OK</text>
+      </g>
+    </g>
+  </g>
+
+
+  <!-- ==================== FLOW COLUMNS (SDLC VALUE LAYERS) ==================== -->
+
+  <!-- COLUMN 1: INTAKE & ALIGNMENT -->
+  <rect x="25" y="340" width="250" height="470" rx="16" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" filter="url(#shadow)" />
+  <rect x="25" y="340" width="250" height="40" rx="16" fill="url(#blue-grad)" />
+  <rect x="25" y="368" width="250" height="12" fill="url(#blue-grad)" />
+  <text x="150" y="365" class="section-title" fill="#1E40AF" text-anchor="middle">1. Intake &amp; Alignment</text>
+
+  <g class="g-card" transform="translate(40, 395)">
+    <rect width="220" height="120" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.2" filter="url(#card-shadow)" />
+    <circle cx="28" cy="28" r="12" fill="#EFF6FF" />
+    <path d="M24 22h8v12h-8z M26 26h4 M26 30h4" fill="none" stroke="#2563EB" stroke-width="1.5" />
+    <text x="48" y="27" class="card-title">Goal &amp; Specs Intake</text>
+    <text x="48" y="40" class="card-subtitle">Preventing AI Assumptions</text>
+    <rect x="12" y="52" width="196" height="1" fill="#F1F5F9" />
+    <text x="16" y="70" class="bullet-text">• Asks product manager requirements</text>
+    <text x="16" y="86" class="bullet-text">• Resolves exclusions and scope</text>
+    <text x="16" y="102" class="bullet-text">• Saves decisions to context.md</text>
+  </g>
+
+  <g class="g-card" transform="translate(40, 525)">
+    <rect width="220" height="120" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.2" filter="url(#card-shadow)" />
+    <circle cx="28" cy="28" r="12" fill="#FEF3C7" />
+    <path d="M22 28h12 M25 24h6 M28 22v12" fill="none" stroke="#D97706" stroke-width="1.5" />
+    <text x="48" y="27" class="card-title">Budget Limits</text>
+    <text x="48" y="40" class="card-subtitle">Cost Control Estimation</text>
+    <rect x="12" y="52" width="196" height="1" fill="#F1F5F9" />
+    <text x="16" y="70" class="bullet-text">• Pre-computes tokens cost</text>
+    <text x="16" y="86" class="bullet-text">• Restricts maximum model loops</text>
+    <text x="16" y="102" class="bullet-text">• Prevents runaway spend bills</text>
+  </g>
+
+  <g class="g-card" transform="translate(40, 655)">
+    <rect width="220" height="140" rx="10" fill="#FFFBEB" stroke="#FDE68A" stroke-width="1.2" />
+    <circle cx="28" cy="28" r="12" fill="#FEF3C7" />
+    <path d="M22 30c0-2 2-4 4-4h4c2 0 4 2 4 4 M30 26c0 2-2 4-4 4h-4c-2 0-4-2-4-4" fill="none" stroke="#D97706" stroke-width="1.5" />
+    <text x="48" y="27" class="card-title" fill="#92400E">Requirement Map</text>
+    <text x="48" y="40" class="card-subtitle" fill="#B45309">Continuous Traceability</text>
+    <rect x="12" y="52" width="196" height="1" fill="#FDBA74" />
+    <text x="16" y="72" class="bullet-text" fill="#78350F">• Binds specs to task code blocks</text>
+    <text x="16" y="88" class="bullet-text" fill="#78350F">• traceability.json mapping engine</text>
+    <text x="16" y="104" class="bullet-text" fill="#78350F">• Builds chronological audit ledgers</text>
+  </g>
+
+
+  <!-- COLUMN 2: DETERMINISTIC GOVERNANCE -->
+  <rect x="300" y="340" width="250" height="470" rx="16" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" filter="url(#shadow)" />
+  <rect x="300" y="340" width="250" height="40" rx="16" fill="url(#orange-grad)" />
+  <rect x="300" y="368" width="250" height="12" fill="url(#orange-grad)" />
+  <text x="425" y="365" class="section-title" fill="#C2410C" text-anchor="middle">2. Deterministic Governance</text>
+
+  <g class="g-card" transform="translate(315, 395)">
+    <rect width="220" height="120" rx="10" fill="#FEF2F2" stroke="#FCA5A5" stroke-width="1.2" filter="url(#card-shadow)" />
+    <circle cx="28" cy="28" r="12" fill="#FEE2E2" />
+    <path d="M23 26h10v8h-10z M25 26v-3a3 3 0 0 1 6 0v3" fill="none" stroke="#DC2626" stroke-width="1.5" />
+    <text x="48" y="27" class="card-title" fill="#991B1B">Command Sandbox</text>
+    <text x="48" y="40" class="card-subtitle" fill="#B91C1C">Shell Interceptor &amp; Blocklist</text>
+    <rect x="12" y="52" width="196" height="1" fill="#FCA5A5" />
+    <text x="16" y="70" class="bullet-text" fill="#7F1D1D">• Intercepts high-risk commands</text>
+    <text x="16" y="86" class="bullet-text" fill="#7F1D1D">• Blocks rm -rf, forced pushes</text>
+    <text x="16" y="102" class="bullet-text" fill="#7F1D1D">• Restricts API deployment actions</text>
+  </g>
+
+  <g class="g-card" transform="translate(315, 525)">
+    <rect width="220" height="120" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.2" filter="url(#card-shadow)" />
+    <circle cx="28" cy="28" r="12" fill="#FFF7ED" />
+    <path d="M22 23l6-3 6 3v5c0 5-6 8-6 8s-6-3-6-8z" fill="none" stroke="#EA580C" stroke-width="1.5" />
+    <text x="48" y="27" class="card-title">Harness Guardrails</text>
+    <text x="48" y="40" class="card-subtitle">Work limits &amp; safety rules</text>
+    <rect x="12" y="52" width="196" height="1" fill="#F1F5F9" />
+    <text x="16" y="70" class="bullet-text">• Hard limits on message loop sizes</text>
+    <text x="16" y="86" class="bullet-text">• Restricts maximum model tool calls</text>
+    <text x="16" y="102" class="bullet-text">• Enforces strictly requireEvidence</text>
+  </g>
+
+  <g class="g-card" transform="translate(315, 655)">
+    <rect width="220" height="140" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.2" filter="url(#card-shadow)" />
+    <circle cx="28" cy="28" r="12" fill="#F0FDFA" />
+    <circle cx="27" cy="27" r="4" fill="none" stroke="#0D9488" stroke-width="1.5" />
+    <path d="M30 30l4 4 M22 22h12" stroke="#0D9488" stroke-width="1.5" stroke-linecap="round" />
+    <text x="48" y="27" class="card-title">Threats &amp; Compliance</text>
+    <text x="48" y="40" class="card-subtitle">Automated Security Auditing</text>
+    <rect x="12" y="52" width="196" height="1" fill="#F1F5F9" />
+    <text x="16" y="72" class="bullet-text">• Pre-release vulnerability scans</text>
+    <text x="16" y="88" class="bullet-text">• Secret &amp; API token pattern scrubs</text>
+    <text x="16" y="104" class="bullet-text">• Maps STRIDE threats automatically</text>
+  </g>
+
+
+  <!-- COLUMN 3: GATED AGENTIC EXECUTION -->
+  <rect x="575" y="340" width="270" height="470" rx="16" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" filter="url(#shadow)" />
+  <rect x="575" y="340" width="270" height="40" rx="16" fill="url(#purple-grad)" />
+  <rect x="575" y="368" width="270" height="12" fill="url(#purple-grad)" />
+  <text x="710" y="365" class="section-title" fill="#6B21A8" text-anchor="middle">3. Gated Agentic Execution</text>
+
+  <!-- Card 1: Orchestrator Dispatcher -->
+  <g class="g-card" transform="translate(585, 395)">
+    <rect width="250" height="60" rx="10" fill="#FFFFFF" stroke="#E9D5FF" stroke-width="1.2" filter="url(#card-shadow)" />
+    <circle cx="22" cy="30" r="9" fill="#FAF5FF" />
+    <path d="M19 27h6v6h-6z" fill="none" stroke="#7C3AED" stroke-width="1.2" />
+    <text x="38" y="26" class="card-title">Orchestrator Dispatch</text>
+    <text x="38" y="38" class="card-subtitle">compiles prompt.md spec goals</text>
+    <text x="38" y="49" class="bullet-text" fill="#7C3AED" style="font-weight:600;">Loads specialists instructions</text>
+  </g>
+
+  <!-- Card 2: Builder Workspace -->
+  <g class="g-card" transform="translate(585, 475)">
+    <rect width="250" height="80" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.2" filter="url(#card-shadow)" />
+    <circle cx="22" cy="24" r="9" fill="#EFF6FF" />
+    <path d="M19 26v-3h6v3 M17 26h10" fill="none" stroke="#2563EB" stroke-width="1" />
+    <text x="38" y="21" class="card-title">Builder Sandbox (Write Active)</text>
+    <text x="38" y="33" class="card-subtitle">AI Workers constructing logic code</text>
+    <rect x="10" y="42" width="230" height="1" fill="#F1F5F9" />
+    <text x="14" y="55" class="bullet-text">• Modifies source files in isolated sandbox</text>
+    <text x="14" y="67" class="bullet-text">• Outputs builder.json + next_agent_hints</text>
+  </g>
+
+  <!-- Card 3: Validator Workspace -->
+  <g class="g-card" transform="translate(585, 575)">
+    <rect width="250" height="80" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.2" filter="url(#card-shadow)" />
+    <circle cx="22" cy="24" r="9" fill="#F0FDF4" />
+    <path d="M18 24l2 2 4-4" fill="none" stroke="#16A34A" stroke-width="1.5" />
+    <text x="38" y="21" class="card-title">Validator Sandbox (Read-Only)</text>
+    <text x="38" y="33" class="card-subtitle">AI Reviewers auditing spec metrics</text>
+    <rect x="10" y="42" width="230" height="1" fill="#F1F5F9" />
+    <text x="14" y="55" class="bullet-text">• Accepts next_agent_hints handoff loop</text>
+    <text x="14" y="67" class="bullet-text">• Runs unit tests &amp; signs validation.json</text>
+  </g>
+
+  <!-- Card 4: Harness Quality Contract -->
+  <g class="g-card" transform="translate(585, 680)">
+    <rect width="250" height="115" rx="10" fill="#F0FDF4" stroke="#86EFAC" stroke-width="1.2" filter="url(#card-shadow)" />
+    <circle cx="28" cy="24" r="12" fill="#DCFCE7" />
+    <path d="M24 19v10h8v-10z M26 22h4 M26 26h4" fill="none" stroke="#16A34A" stroke-width="1.5" />
+    <text x="48" y="23" class="card-title" fill="#14532D">Harness Quality Contract</text>
+    <text x="48" y="35" class="card-subtitle" fill="#166534">Gated Deliverable Acceptance</text>
+    <rect x="12" y="45" width="226" height="1" fill="#86EFAC" />
+    <text x="16" y="62" class="bullet-text" fill="#166534">• Double-checks signed validator contracts</text>
+    <text x="16" y="76" class="bullet-text" fill="#166534">• Verifies physical modified files on disk</text>
+    <text x="16" y="90" class="bullet-text" fill="#166534">• Rejects runs without test logs evidence</text>
+  </g>
+
+
+  <!-- COLUMN 4: DUAL HUMAN SIGN-OFF -->
+  <rect x="870" y="340" width="250" height="470" rx="16" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" filter="url(#shadow)" />
+  <rect x="870" y="340" width="250" height="40" rx="16" fill="url(#orange-grad)" />
+  <rect x="870" y="368" width="250" height="12" fill="url(#orange-grad)" />
+  <text x="995" y="365" class="section-title" fill="#C2410C" text-anchor="middle">4. Dual Human Sign-off</text>
+
+  <g class="g-card" transform="translate(885, 395)">
+    <rect width="220" height="190" rx="10" fill="#FFFFFF" stroke="#FED7AA" stroke-width="1.2" filter="url(#card-shadow)" />
+    <circle cx="28" cy="28" r="12" fill="#FFEDD5" />
+    <path d="M22 28l4 4 8-8" fill="none" stroke="#EA580C" stroke-width="2" stroke-linecap="round" />
+    <text x="48" y="27" class="card-title" fill="#7C2D12">Technical Sign-off</text>
+    <text x="48" y="40" class="card-subtitle" fill="#9A3412">Engineering &amp; Security Gate</text>
+    <rect x="12" y="52" width="196" height="1" fill="#FED7AA" />
+    <text x="16" y="74" class="bullet-text" fill="#7C2D12" style="font-weight:600;">Enforces Code Quality:</text>
+    <text x="16" y="92" class="bullet-text" fill="#7C2D12">• Engineering reviews code logic</text>
+    <text x="16" y="108" class="bullet-text" fill="#7C2D12">• Verifies dynamic test coverages</text>
+    <text x="16" y="124" class="bullet-text" fill="#7C2D12">• Validates static audits check</text>
+    <text x="16" y="140" class="bullet-text" fill="#7C2D12">• Scans dependency vulnerabilities</text>
+  </g>
+
+  <g class="g-card" transform="translate(885, 605)">
+    <rect width="220" height="190" rx="10" fill="#FFF7ED" stroke="#FDBA74" stroke-width="1.5" filter="url(#card-shadow)" />
+    <circle cx="28" cy="28" r="12" fill="#FFEDD5" />
+    <path d="M24 24h8v8h-8z M28 32v2" fill="none" stroke="#EA580C" stroke-width="1.5" />
+    <text x="48" y="27" class="card-title" fill="#7C2D12">Business Sign-off</text>
+    <text x="48" y="40" class="card-subtitle" fill="#9A3412">Product &amp; Governance Gate</text>
+    <rect x="12" y="52" width="196" height="1" fill="#FDBA74" />
+    <text x="16" y="74" class="bullet-text" fill="#7C2D12" style="font-weight:600;">Enforces Product Values:</text>
+    <text x="16" y="92" class="bullet-text" fill="#7C2D12">• Audits business requirements match</text>
+    <text x="16" y="108" class="bullet-text" fill="#7C2D12">• Confirms total projected compute cost</text>
+    <text x="16" y="124" class="bullet-text" fill="#7C2D12">• Assures user experience standards</text>
+    <text x="16" y="140" class="bullet-text" fill="#7C2D12">• Unlocks production release gates</text>
+  </g>
+
+
+  <!-- COLUMN 5: DELIVERY & MEMORY -->
+  <rect x="1145" y="340" width="250" height="470" rx="16" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" filter="url(#shadow)" />
+  <rect x="1145" y="340" width="250" height="40" rx="16" fill="url(#teal-grad)" />
+  <rect x="1145" y="368" width="250" height="12" fill="url(#teal-grad)" />
+  <text x="1270" y="365" class="section-title" fill="#065F46" text-anchor="middle">5. Delivery &amp; Memory</text>
+
+  <g class="g-card" transform="translate(1160, 395)">
+    <rect width="220" height="120" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.2" filter="url(#card-shadow)" />
+    <circle cx="28" cy="28" r="12" fill="#F0FDF4" />
+    <path d="M22 28h12 M28 22l6 6-6 6" fill="none" stroke="#16A34A" stroke-width="1.5" />
+    <text x="48" y="27" class="card-title">Target Deployment</text>
+    <text x="48" y="40" class="card-subtitle">Governed CI/CD Release</text>
+    <rect x="12" y="52" width="186" height="1" fill="#F1F5F9" />
+    <text x="16" y="70" class="bullet-text">• Zero-downtime canary deployment</text>
+    <text x="16" y="86" class="bullet-text">• Zero deployment changes without gate</text>
+    <text x="16" y="102" class="bullet-text">• Automatic rollbacks on crash alerts</text>
+  </g>
+
+  <g class="g-card" transform="translate(1160, 525)">
+    <rect width="220" height="120" rx="10" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.2" filter="url(#card-shadow)" />
+    <circle cx="28" cy="28" r="12" fill="#F0FDF4" />
+    <path d="M22 28a6 6 0 0 1 12 0c0 4-6 8-6 8 M28 36h.01" fill="none" stroke="#16A34A" stroke-width="2" stroke-linecap="round" />
+    <text x="48" y="27" class="card-title">Episodic Knowledge</text>
+    <text x="48" y="40" class="card-subtitle">Continuous Learning Engine</text>
+    <rect x="12" y="52" width="186" height="1" fill="#F1F5F9" />
+    <text x="16" y="70" class="bullet-text">• Learns successful paths dynamically</text>
+    <text x="16" y="86" class="bullet-text">• Global/Local memory syncs safely</text>
+    <text x="16" y="102" class="bullet-text">• Sanitises api_keys before writing</text>
+  </g>
+
+  <g class="g-card" transform="translate(1160, 655)">
+    <rect width="220" height="140" rx="10" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1.5" filter="url(#card-shadow)" />
+    <circle cx="28" cy="28" r="12" fill="#DBEAFE" />
+    <path d="M22 24h12v8h-12z M22 24l6 4.5 6-4.5" fill="none" stroke="#2563EB" stroke-width="1.5" />
+    <text x="48" y="27" class="card-title" fill="#1E40AF">Notifications Layer</text>
+    <text x="48" y="40" class="card-subtitle" fill="#1E40AF">Slack, Email, &amp; Discord Alerts</text>
+    <rect x="12" y="52" width="186" height="1" fill="#BFDBFE" />
+    <text x="16" y="72" class="bullet-text" fill="#1E3A8A">• Pushes interactive approvals to Slack</text>
+    <text x="16" y="88" class="bullet-text" fill="#1E3A8A">• Delivers instant deploy alerts email</text>
+    <text x="16" y="104" class="bullet-text" fill="#1E3A8A">• Broadcasts task logs to Discord team</text>
+  </g>
+
+
+  <!-- ==================== FLOW CONNECTORS ==================== -->
+
+  <!-- Flow 1: Intake to Policy Sandbox Check -->
+  <path d="M 275 460 H 300" fill="none" stroke="#2563EB" stroke-width="2" marker-end="url(#arr-blue)" />
+  <rect x="281" y="448" width="20" height="20" rx="10" fill="#2563EB" />
+  <text x="291" y="462" style="font-weight:700; font-size:10px; fill:#FFFFFF;" text-anchor="middle">1</text>
+  <text x="291" y="482" class="flow-label" text-anchor="middle">Intake</text>
+
+  <!-- Flow 2: Policy Validation to Sandbox Execution -->
+  <path d="M 550 460 H 575" fill="none" stroke="#EA580C" stroke-width="2" marker-end="url(#arr-orange)" />
+  <rect x="556" y="448" width="20" height="20" rx="10" fill="#EA580C" />
+  <text x="566" y="462" style="font-weight:700; font-size:10px; fill:#FFFFFF;" text-anchor="middle">2</text>
+  <text x="566" y="482" class="flow-label" fill="#EA580C" text-anchor="middle">Validate</text>
+
+  <!-- Flow 3: Execution Output to Quality Gate -->
+  <path d="M 845 740 H 870" fill="none" stroke="#16A34A" stroke-width="2" marker-end="url(#arr-green)" />
+  <rect x="851" y="728" width="20" height="20" rx="10" fill="#16A34A" />
+  <text x="861" y="742" style="font-weight:700; font-size:10px; fill:#FFFFFF;" text-anchor="middle">3</text>
+  <text x="861" y="762" class="flow-label" fill="#16A34A" text-anchor="middle">Compile</text>
+
+  <!-- Inner Column 3 Handoff Flow Lines (Air Gaps ONLY - NO text overlays) -->
+  <!-- 1. Orchestrator Handoff to Builder Sandbox (y=455 to y=475) -->
+  <path d="M 710 455 V 470" fill="none" stroke="#7C3AED" stroke-width="1.8" marker-end="url(#arr-purple)" />
+  <text x="724" y="469" class="flow-label" fill="#7C3AED">dispatch</text>
+
+  <!-- 2. Builder next_agent_hints Handoff to Validator (y=555 to y=575) -->
+  <path d="M 710 555 V 570" fill="none" stroke="#7C3AED" stroke-width="1.8" marker-end="url(#arr-purple)" />
+  <text x="724" y="569" class="flow-label" fill="#7C3AED">next_agent_hints</text>
+
+  <!-- 3. Validator deliverables to Harness Quality Gate (y=655 to y=680) -->
+  <path d="M 710 655 V 675" fill="none" stroke="#16A34A" stroke-width="1.8" marker-end="url(#arr-green)" />
+
+  <!-- Flow 5: Human HITL Approvals to Deployment/Memory -->
+  <path d="M 1120 590 H 1145" fill="none" stroke="#EA580C" stroke-width="2" marker-end="url(#arr-orange)" />
+  <rect x="1126" y="578" width="20" height="20" rx="10" fill="#EA580C" />
+  <text x="1136" y="592" style="font-weight:700; font-size:10px; fill:#FFFFFF;" text-anchor="middle">4</text>
+  <text x="1136" y="612" class="flow-label" fill="#EA580C" text-anchor="middle">Approve</text>
+
+  <!-- Flow 6: Production Deploy to Alerts & Memory -->
+  <path d="M 1270 515 V 525" fill="none" stroke="#16A34A" stroke-width="1.5" stroke-dasharray="3 3" marker-end="url(#arr-green)" />
+  <path d="M 1270 645 V 655" fill="none" stroke="#2563EB" stroke-width="1.5" stroke-dasharray="3 3" marker-end="url(#arr-blue)" />
+
+  <!-- Flow 7: Memory Retrieval Context Loop Back to Execution Sandbox -->
+  <path d="M 1160 585 H 1130 V 825 H 710 V 800" fill="none" stroke="#16A34A" stroke-width="1.5" stroke-dasharray="4 2" marker-end="url(#arr-green)" />
+  <text x="920" y="840" class="flow-label" fill="#16A34A" text-anchor="middle">Recalled Episodic Context Loop (sdlc_build_next)</text>
+
+  <!-- Dashboard connection feeds -->
+  <path d="M 385 300 V 340" stroke="#E2E8F0" stroke-width="1.5" stroke-dasharray="3 3" />
+  <path d="M 710 300 V 340" stroke="#E2E8F0" stroke-width="1.5" stroke-dasharray="3 3" />
+  <path d="M 1025 300 V 340" stroke="#E2E8F0" stroke-width="1.5" stroke-dasharray="3 3" />
+
+
+  <!-- ==================== LEGEND (BOTTOM LEFT) ==================== -->
+  <g transform="translate(25, 785)">
+    <rect width="470" height="50" rx="6" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" filter="url(#shadow)" />
+    
+    <line x1="12" y1="25" x2="42" y2="25" stroke="#2563EB" stroke-width="2.5" />
+    <text x="50" y="29" class="legend-text">Core Business Pipeline (Intake &amp; Alerts)</text>
+    
+    <line x1="240" y1="25" x2="270" y2="25" stroke="#EA580C" stroke-width="2" />
+    <text x="278" y="29" class="legend-text">Governance Controls / HITL Sign-offs</text>
+
+    <line x1="130" y1="9" x2="160" y2="9" stroke="#16A34A" stroke-width="2" />
+    <text x="168" y="13" class="legend-text">Safe Agent Execution &amp; Learning</text>
+  </g>
+
+</svg>

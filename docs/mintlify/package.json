@@ -1,0 +1,16 @@
+{
+  "name": "rstack-sdlc-docs",
+  "version": "1.0.0",
+  "description": "Mintlify documentation for RStack SDLC",
+  "engines": {
+    "node": ">=18 <25"
+  },
+  "scripts": {
+    "dev": "mintlify dev",
+    "build": "mintlify build",
+    "check": "mintlify broken-links"
+  },
+  "devDependencies": {
+    "mintlify": "4.2.577"
+  }
+}

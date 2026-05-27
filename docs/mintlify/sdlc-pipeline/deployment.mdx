@@ -1,0 +1,63 @@
+---
+title: "Agent 09 — Deployment"
+description: "DevOps deployment agent. Produces Dockerfile, CI/CD pipeline config, and deployment scripts."
+---
+
+<Info>
+  **File:** `agents/sdlc/09-deployment.md` · **Model:** Sonnet · **Tools:** Bash, Read, Write
+</Info>
+
+## Purpose
+
+The deployment agent produces deployment artefacts that work the same way in every environment. Every deploy is reversible in under 5 minutes.
+
+## Core principle
+
+> Rollback is not a footnote — it is a first-class deliverable.
+
+## What it produces
+
+- Multi-stage Dockerfile with non-root user
+- CI/CD pipeline config (GitHub Actions, CircleCI, etc.)
+- Environment-specific configs (dev, staging, production)
+- Deploy script with health check + rollback procedure
+- `deployment_report.json`
+
+## Sample outputs
+
+```dockerfile
+# Multi-stage, non-root, production-ready
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+
+FROM node:20-alpine
+RUN addgroup -S app && adduser -S app -G app
+WORKDIR /app
+COPY --from=builder /app/node_modules ./node_modules
+COPY . .
+USER app
+EXPOSE 3000
+HEALTHCHECK --interval=30s CMD wget -qO- http://localhost:3000/health
+CMD ["node", "src/index.js"]
+```
+
+```yaml
+# .github/workflows/ci.yml — gates deployment on test pass
+name: CI
+on: [push]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - run: npm test
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - run: ./scripts/deploy.sh
+```

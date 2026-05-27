@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 480" width="100%" height="100%">
+  <defs>
+    <!-- Styles -->
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap');
+      text {
+        font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      }
+      .main-title { font-weight: 700; font-size: 18px; fill: #0F172A; }
+      .main-subtitle { font-weight: 500; font-size: 11px; fill: #64748B; }
+      .section-title { font-weight: 700; font-size: 13px; fill: #1E293B; }
+      .card-title { font-weight: 700; font-size: 12.5px; fill: #0F172A; }
+      .card-subtitle { font-weight: 500; font-size: 10px; fill: #64748B; }
+      .param-label { font-weight: 600; font-size: 9.5px; fill: #EA580C; }
+      .param-value { font-family: monospace; font-weight: 700; font-size: 14px; fill: #7C2D12; }
+      .bullet-text { font-weight: 400; font-size: 10px; fill: #334155; }
+      .shield-title { font-weight: 700; font-size: 11.5px; fill: #1E293B; }
+    </style>
+
+    <!-- Filters -->
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#0F172A" flood-opacity="0.04" />
+    </filter>
+    <filter id="card-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#0F172A" flood-opacity="0.04" />
+    </filter>
+
+    <!-- Gradients -->
+    <linearGradient id="orange-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFAF5" />
+      <stop offset="100%" stop-color="#FFF3E0" />
+    </linearGradient>
+    <linearGradient id="blue-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F5F9FF" />
+      <stop offset="100%" stop-color="#E1EFFE" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="#F8FAFC" rx="12" />
+
+  <!-- Header -->
+  <g transform="translate(40, 35)">
+    <text x="0" y="0" class="main-title">RStack SDLC — Harness Core Guardrail Policies</text>
+    <text x="0" y="16" class="main-subtitle">Configurable limits and required security contracts enforced deterministically by src/harness/guardrails.js</text>
+  </g>
+
+  <!-- ==================== LEFT COLUMN: NUMERICAL BUDGET LIMITS ==================== -->
+  <g transform="translate(40, 80)">
+    <rect width="530" height="360" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" filter="url(#shadow)" />
+    <rect width="530" height="34" rx="12" fill="url(#orange-grad)" />
+    <rect y="24" width="530" height="10" fill="url(#orange-grad)" />
+    <text x="20" y="21" class="section-title" fill="#C2410C">Execution &amp; Cost Limits</text>
+
+    <!-- Grid of 4 Limits -->
+    
+    <!-- Limit 1: Max Task Attempts -->
+    <g transform="translate(20, 55)">
+      <rect width="230" height="130" rx="8" fill="#FFF7ED" stroke="#FED7AA" stroke-width="1" />
+      <text x="15" y="25" class="param-label">maxTaskAttempts</text>
+      <text x="15" y="46" class="param-value">2 attempts</text>
+      <rect x="15" y="58" width="200" height="1" fill="#FED7AA" />
+      <text x="15" y="76" class="bullet-text" style="font-weight:600;">Prevents Builder loops:</text>
+      <text x="15" y="92" class="bullet-text">• Re-routes failing tasks back to Builder</text>
+      <text x="15" y="108" class="bullet-text">• Hard fail triggers if pass is not met</text>
+    </g>
+
+    <!-- Limit 2: Max Destructive Attempts -->
+    <g transform="translate(275, 55)">
+      <rect width="230" height="130" rx="8" fill="#FFF7ED" stroke="#FED7AA" stroke-width="1" />
+      <text x="15" y="25" class="param-label">maxDestructiveTaskAttempts</text>
+      <text x="15" y="46" class="param-value">1 attempt</text>
+      <rect x="15" y="58" width="200" height="1" fill="#FED7AA" />
+      <text x="15" y="76" class="bullet-text" style="font-weight:600;">Destructive safeguards:</text>
+      <text x="15" y="92" class="bullet-text">• Enforces absolute zero-tolerance policy</text>
+      <text x="15" y="108" class="bullet-text">• Blocks repeat deletes and overwrites</text>
+    </g>
+
+    <!-- Limit 3: Max Tool Calls -->
+    <g transform="translate(20, 205)">
+      <rect width="230" height="130" rx="8" fill="#FFF7ED" stroke="#FED7AA" stroke-width="1" />
+      <text x="15" y="25" class="param-label">maxToolCallsPerTask</text>
+      <text x="15" y="46" class="param-value">40 calls</text>
+      <rect x="15" y="58" width="200" height="1" fill="#FED7AA" />
+      <text x="15" y="76" class="bullet-text" style="font-weight:600;">Token budget limit:</text>
+      <text x="15" y="92" class="bullet-text">• Shuts down recursive tool executions</text>
+      <text x="15" y="108" class="bullet-text">• Protects against runaway API costs</text>
+    </g>
+
+    <!-- Limit 4: Max Message Window -->
+    <g transform="translate(275, 205)">
+      <rect width="230" height="130" rx="8" fill="#FFF7ED" stroke="#FED7AA" stroke-width="1" />
+      <text x="15" y="25" class="param-label">maxMessagesPerTask</text>
+      <text x="15" y="46" class="param-value">25 messages</text>
+      <rect x="15" y="58" width="200" height="1" fill="#FED7AA" />
+      <text x="15" y="76" class="bullet-text" style="font-weight:600;">Context hygiene limits:</text>
+      <text x="15" y="92" class="bullet-text">• Caps prompt token usage parameters</text>
+      <text x="15" y="108" class="bullet-text">• Rejects excessively long conversation chains</text>
+    </g>
+  </g>
+
+  <!-- ==================== RIGHT COLUMN: VALIDATION RULES ==================== -->
+  <g transform="translate(595, 80)">
+    <rect width="560" height="360" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" filter="url(#shadow)" />
+    <rect width="560" height="34" rx="12" fill="url(#blue-grad)" />
+    <rect y="24" width="560" height="10" fill="url(#blue-grad)" />
+    <text x="20" y="21" class="section-title" fill="#1E40AF">Strict Contract &amp; Evidence Policies</text>
+
+    <!-- Validation Guardrail List -->
+    
+    <!-- Rule 1: requireBuilderContract -->
+    <g transform="translate(20, 55)">
+      <rect width="520" height="85" rx="8" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1" />
+      <circle cx="30" cy="42" r="16" fill="#EFF6FF" />
+      <path d="M22 42h16 M30 34v16" fill="none" stroke="#2563EB" stroke-width="2" />
+      <text x="60" y="32" class="shield-title">requireBuilderContract: true</text>
+      <text x="60" y="48" class="bullet-text">• Enforces strictly structures builder.json creation before any code is allowed</text>
+      <text x="60" y="62" class="bullet-text">• Logs modified file ranges, task targets, and dependency declarations</text>
+    </g>
+
+    <!-- Rule 2: requireValidatorContract -->
+    <g transform="translate(20, 150)">
+      <rect width="520" height="85" rx="8" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1" />
+      <circle cx="30" cy="42" r="16" fill="#EFF6FF" />
+      <path d="M22 42l6 6l10-10" fill="none" stroke="#2563EB" stroke-width="2" />
+      <text x="60" y="32" class="shield-title">requireValidatorContract: true</text>
+      <text x="60" y="48" class="bullet-text">• Demands validation.json output from read-only Validator sandbox subprocess</text>
+      <text x="60" y="62" class="bullet-text">• Verifies test logs directly to prevent hallucinated success claims</text>
+    </g>
+
+    <!-- Rule 3: requireEvidenceForPass -->
+    <g transform="translate(20, 245)">
+      <rect width="520" height="92" rx="8" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1" />
+      <circle cx="30" cy="46" r="16" fill="#EFF6FF" />
+      <path d="M24 36h12 M24 44h12 M24 52h12" fill="none" stroke="#2563EB" stroke-width="2" />
+      <text x="60" y="32" class="shield-title">requireEvidenceForPass: true</text>
+      <text x="60" y="48" class="bullet-text">• Commits detailed validation contracts into append-only evidence.jsonl</text>
+      <text x="60" y="62" class="bullet-text">• Blocks advancing canonical SDLC stages without typed evidence schemas</text>
+      <text x="60" y="76" class="bullet-text">• Ensures 100% auditable traceability records exist for compliance inspectors</text>
+    </g>
+  </g>
+
+</svg>

@@ -1,0 +1,77 @@
+---
+title: "Pi Adapter"
+description: "Native Pi runtime adapter — the full governed harness with lifecycle hooks."
+---
+
+## Why Pi is the native runtime
+
+Pi is the first supported host because it exposes the hooks RStack needs for a real governed harness:
+
+| RStack need | Pi support |
+|---|---|
+| Custom SDLC tools | `pi.registerTool()` |
+| Slash commands | `pi.registerCommand()` |
+| Lifecycle hooks | `pi.on(...)` |
+| Safety gates | `tool_call` hook |
+| Tool evidence logging | `tool_result` hook |
+| Skill/prompt discovery | `resources_discover` hook |
+| Installable package | `pi install` |
+| Isolated worker delegation | `pi --mode json` subprocesses |
+
+## Installation
+
+```bash
+# From npm (after publishing)
+pi install npm:rstack-agents
+
+# From local checkout
+pi install /path/to/SDLC-rstack
+
+# One-off test without installing
+pi -e /path/to/SDLC-rstack/extensions/rstack-sdlc.ts
+```
+
+## Hook lifecycle
+
+| Pi hook | RStack behavior |
+|---|---|
+| `resources_discover` | Exposes package/project skills and prompts to Pi |
+| `session_start` | Creates `.rstack/` state roots and sets the RStack status line |
+| `before_agent_start` | Injects orchestrator/builder/validator instructions when prompt mentions RStack/SDLC |
+| `tool_call` | Logs tool calls; blocks destructive actions without approval |
+| `tool_result` | Logs bounded tool result summaries to the active run event stream |
+| `session_shutdown` | Appends a shutdown event to the active run |
+
+## Native Pi tools
+
+```text
+sdlc_orchestrate   Load orchestrator, builder, validator for a goal
+sdlc_start         Create run state directory
+sdlc_clarify       Capture product-owner decisions
+sdlc_plan          Generate plan, tasks, specs, traceability
+sdlc_spec          Read or update spec artifacts
+sdlc_approve       Record human approval/rejection gates
+sdlc_agents        List available agents, skills, plugins
+sdlc_delegate      Spawn isolated Pi worker agents
+sdlc_build_next    Prepare the next gated builder task packet
+sdlc_validate      Validate builder output; write validation.json
+sdlc_status        Show run status and next recommended action
+sdlc_memory        Search or append cross-run learnings
+```
+
+## Native Pi slash commands
+
+```text
+/sdlc              Start or continue an SDLC run
+/sdlc-agents       List available agents for the current run
+```
+
+## Delegated workers
+
+`sdlc_delegate` spawns isolated Pi workers for bounded tasks. Validators default to read-only tools:
+
+```text
+sdlc_delegate(role="validator", task="review auth implementation")
+# → Spawns a Pi worker with read, grep, find, ls only
+# → Returns validation.json summary
+```

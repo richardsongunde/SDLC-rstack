@@ -1,0 +1,53 @@
+---
+title: "Agent 02 — Requirements"
+description: "Expert Business Analyst. Produces functional requirements, non-functional requirements, and user stories with testable acceptance criteria."
+---
+
+<Info>
+  **File:** `agents/sdlc/02-requirements.md` · **Model:** Sonnet · **Tools:** Bash, Read, Write
+</Info>
+
+## Purpose
+
+The requirements agent translates the transcript into precise, testable requirements. Every requirement has a specific, observable acceptance criterion that a QA engineer can test on day one.
+
+## Core principle
+
+> "The system should be fast" is not a requirement. "API p95 latency < 200ms under 1000 concurrent users, measured with k6" is.
+
+## What it does
+
+1. Reads `transcript.json`
+2. Extracts functional requirements (what the system must do)
+3. Extracts non-functional requirements (performance, security, scalability)
+4. Writes user stories with acceptance criteria
+5. Documents explicitly out-of-scope items
+6. Produces `requirement_spec.json`
+
+## Outputs
+
+```json
+// .rstack/runs/<run_id>/specs/requirements.json
+{
+  "functional": [
+    {
+      "id": "REQ-001",
+      "title": "User authentication",
+      "description": "Users can log in with email and password",
+      "acceptance_criteria": [
+        "Login succeeds with valid credentials and returns JWT",
+        "Login fails with invalid credentials and returns 401",
+        "Login rate-limited to 5 attempts per minute per IP"
+      ]
+    }
+  ],
+  "non_functional": [
+    {
+      "id": "NFR-001",
+      "title": "API latency",
+      "requirement": "p95 API latency < 200ms under 1000 concurrent users"
+    }
+  ],
+  "out_of_scope": ["Admin dashboard", "Mobile app"]
+}
+```

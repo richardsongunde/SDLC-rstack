@@ -1,0 +1,153 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 480" width="100%" height="100%">
+  <defs>
+    <!-- Styles -->
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap');
+      text {
+        font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      }
+      .main-title { font-weight: 700; font-size: 18px; fill: #0F172A; }
+      .main-subtitle { font-weight: 500; font-size: 11px; fill: #64748B; }
+      .section-title { font-weight: 700; font-size: 13px; fill: #1E293B; }
+      .card-title { font-weight: 700; font-size: 12px; fill: #0F172A; }
+      .card-subtitle { font-weight: 500; font-size: 10px; fill: #64748B; }
+      .bullet-text { font-weight: 400; font-size: 10px; fill: #334155; }
+      .shield-title { font-weight: 700; font-size: 12px; fill: #991B1B; }
+    </style>
+
+    <!-- Filters -->
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#0F172A" flood-opacity="0.04" />
+    </filter>
+    <filter id="card-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#0F172A" flood-opacity="0.04" />
+    </filter>
+
+    <!-- Gradients -->
+    <linearGradient id="red-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FEF2F2" />
+      <stop offset="100%" stop-color="#FEE2E2" />
+    </linearGradient>
+    <linearGradient id="gray-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F8FAF8" />
+      <stop offset="100%" stop-color="#F1F5F9" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="#F8FAFC" rx="12" />
+
+  <!-- Header -->
+  <g transform="translate(40, 35)">
+    <text x="0" y="0" class="main-title">RStack SDLC — Threats &amp; Compliance Safeguards</text>
+    <text x="0" y="16" class="main-subtitle">Deterministic filters, injection checks, path isolation rules, and automated compliance auditing pipelines</text>
+  </g>
+
+  <!-- ==================== COLUMN 1: PROMPT INJECTION & LEAK FILTERS ==================== -->
+  <g transform="translate(40, 80)">
+    <rect width="360" height="360" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" filter="url(#shadow)" />
+    <rect width="360" height="34" rx="12" fill="url(#red-grad)" />
+    <rect y="24" width="360" height="10" fill="url(#red-grad)" />
+    <text x="20" y="21" class="section-title" fill="#991B1B">Injection &amp; Leak Filter</text>
+
+    <!-- Detail Box -->
+    <g transform="translate(20, 55)">
+      <circle cx="20" cy="20" r="14" fill="#FEF2F2" />
+      <path d="M15 20h10" fill="none" stroke="#DC2626" stroke-width="2" />
+      <text x="45" y="24" class="shield-title">Real-time Scrubber</text>
+      <rect x="0" y="44" width="320" height="280" rx="8" fill="#F8FAFC" stroke="#E2E8F0" />
+      
+      <text x="15" y="66" class="card-subtitle" style="font-weight:600; fill:#991B1B;">PROMPT INJECTION BLOCKER</text>
+      <text x="15" y="82" class="bullet-text">• Scans for manipulation patterns:</text>
+      <text x="25" y="96" class="bullet-text" style="font-family:monospace; fill:#B91C1C;">"ignore prior rules"</text>
+      <text x="25" y="110" class="bullet-text" style="font-family:monospace; fill:#B91C1C;">"disregard system constraints"</text>
+      
+      <text x="15" y="134" class="card-subtitle" style="font-weight:600; fill:#991B1B;">SECRET &amp; TOKEN SCRUBBER</text>
+      <text x="15" y="150" class="bullet-text">• Prevents committing secrets to memory:</text>
+      <text x="25" y="164" class="bullet-text" style="font-family:monospace; fill:#B91C1C;">sk-[A-Za-z0-9]{12,}</text>
+      <text x="25" y="178" class="bullet-text" style="font-family:monospace; fill:#B91C1C;">ak_[A-Za-z0-9]{12,}</text>
+      <text x="15" y="196" class="bullet-text">• Sanitizes API passwords &amp; secrets</text>
+      
+      <text x="15" y="224" class="card-subtitle" style="font-weight:600; fill:#991B1B;">COMPLIANCE VERDICT</text>
+      <text x="15" y="242" class="bullet-text" style="font-weight:600;">Reject-at-write-time policy:</text>
+      <text x="15" y="258" class="bullet-text">• Halts learning absorption if violated</text>
+    </g>
+  </g>
+
+  <!-- ==================== COLUMN 2: PATH PROTECTION SHIELD ==================== -->
+  <g transform="translate(420, 80)">
+    <rect width="360" height="360" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" filter="url(#shadow)" />
+    <rect width="360" height="34" rx="12" fill="url(#red-grad)" />
+    <rect y="24" width="360" height="10" fill="url(#red-grad)" />
+    <text x="20" y="21" class="section-title" fill="#991B1B">Write Path Safeguards</text>
+
+    <!-- Detail Box -->
+    <g transform="translate(20, 55)">
+      <circle cx="20" cy="20" r="14" fill="#FEF2F2" />
+      <path d="M14 20h12 M20 14v12" fill="none" stroke="#DC2626" stroke-width="2" />
+      <text x="45" y="24" class="shield-title">Path Isolation Shield</text>
+      
+      <rect x="0" y="44" width="320" height="280" rx="8" fill="#F8FAFC" stroke="#E2E8F0" />
+      <text x="15" y="66" class="card-subtitle" style="font-weight:600; fill:#991B1B;">PROTECTED WRITE BLACKLIST</text>
+      <text x="15" y="82" class="bullet-text">• Restricts writing to system/credential paths:</text>
+      
+      <g transform="translate(15, 96)">
+        <rect width="130" height="20" rx="4" fill="#FFF5F5" stroke="#FCA5A5" />
+        <text x="10" y="13" font-family="monospace" font-size="8.5px" fill="#C53030">.env / .env.*</text>
+      </g>
+      <g transform="translate(155, 96)">
+        <rect width="130" height="20" rx="4" fill="#FFF5F5" stroke="#FCA5A5" />
+        <text x="10" y="13" font-family="monospace" font-size="8.5px" fill="#C53030">id_rsa / SSH keys</text>
+      </g>
+      <g transform="translate(15, 122)">
+        <rect width="130" height="20" rx="4" fill="#FFF5F5" stroke="#FCA5A5" />
+        <text x="10" y="13" font-family="monospace" font-size="8.5px" fill="#C53030">.npmrc / .pypirc</text>
+      </g>
+      <g transform="translate(155, 122)">
+        <rect width="130" height="20" rx="4" fill="#FFF5F5" stroke="#FCA5A5" />
+        <text x="10" y="13" font-family="monospace" font-size="8.5px" fill="#C53030">credentials.*</text>
+      </g>
+      
+      <text x="15" y="168" class="card-subtitle" style="font-weight:600; fill:#991B1B;">DESTRUCTIVE COMMAND SHIELD</text>
+      <text x="15" y="184" class="bullet-text">• Blocks terminal execution in tool_call():</text>
+      <text x="25" y="200" class="bullet-text" style="font-family:monospace; fill:#B91C1C;">rm -rf (recursive directory deletes)</text>
+      <text x="25" y="214" class="bullet-text" style="font-family:monospace; fill:#B91C1C;">git push --force (force updates)</text>
+      <text x="25" y="228" class="bullet-text" style="font-family:monospace; fill:#B91C1C;">terraform destroy (cloud deletions)</text>
+      
+      <text x="15" y="254" class="bullet-text">• Halts process instantly, returns error state</text>
+    </g>
+  </g>
+
+  <!-- ==================== COLUMN 3: COMPLIANCE SCANNING ==================== -->
+  <g transform="translate(800, 80)">
+    <rect width="360" height="360" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" filter="url(#shadow)" />
+    <rect width="360" height="34" rx="12" fill="url(#red-grad)" />
+    <rect y="24" width="360" height="10" fill="url(#red-grad)" />
+    <text x="20" y="21" class="section-title" fill="#991B1B">Compliance Checker</text>
+
+    <!-- Detail Box -->
+    <g transform="translate(20, 55)">
+      <circle cx="20" cy="20" r="14" fill="#FEF2F2" />
+      <path d="M12 20l5 5l10-10" fill="none" stroke="#DC2626" stroke-width="2" />
+      <text x="45" y="24" class="shield-title">Continuous Compliance</text>
+      
+      <rect x="0" y="44" width="320" height="280" rx="8" fill="#F8FAFC" stroke="#E2E8F0" />
+      <text x="15" y="66" class="card-subtitle" style="font-weight:600; fill:#991B1B;">REGULATORY COMPLIANCE GATES</text>
+      
+      <text x="15" y="82" class="bullet-text">• GDPR Auditing: Scans for PII exposures</text>
+      <text x="15" y="98" class="bullet-text">• HIPAA Safeguards: Verifies health data tags</text>
+      <text x="15" y="114" class="bullet-text">• SOC2 Framework: Immutable execution evidence</text>
+
+      <text x="15" y="142" class="card-subtitle" style="font-weight:600; fill:#991B1B;">STRIDE THREAT MODELING</text>
+      <text x="15" y="158" class="bullet-text">• Automatically models risk areas on changes:</text>
+      <text x="25" y="174" class="bullet-text">• Spoofing &amp; Tampering checks</text>
+      <text x="25" y="188" class="bullet-text">• Repudiation &amp; Information disclosure</text>
+      
+      <text x="15" y="216" class="card-subtitle" style="font-weight:600; fill:#991B1B;">DEPENDENCY AUDITING</text>
+      <text x="15" y="232" class="bullet-text">• Integrates with OWASP dependency checkers</text>
+      <text x="15" y="246" class="bullet-text">• Scans packages for known vulnerability CVEs</text>
+      <text x="15" y="260" class="bullet-text">• Rejects builds failing risk metrics</text>
+    </g>
+  </g>
+
+</svg>

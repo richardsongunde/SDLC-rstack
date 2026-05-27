@@ -1,0 +1,117 @@
+---
+title: "Quickstart"
+description: "Get RStack SDLC running in under 5 minutes."
+---
+
+## Install in Pi (recommended)
+
+Pi is the native runtime for RStack and gives you the full governed harness with lifecycle hooks.
+
+<Steps>
+  <Step title="Install from npm">
+    ```bash
+    pi install npm:rstack-agents
+    ```
+    Or from a local checkout:
+    ```bash
+    pi install /path/to/SDLC-rstack
+    ```
+  </Step>
+  <Step title="Ask Pi to orchestrate a goal">
+    ```text
+    Use RStack to build a production-ready todo app with auth, tests, docs, and release readiness.
+    ```
+  </Step>
+  <Step title="Follow the lifecycle">
+    RStack guides you through each phase:
+    ```text
+    sdlc_orchestrate(goal="Build a production-ready todo app...")
+    sdlc_start(goal="Build a production-ready todo app...")
+    sdlc_clarify()
+    sdlc_plan()
+    ```
+  </Step>
+  <Step title="Approve gates before build">
+    ```text
+    sdlc_approve(artifact="plan.md", status="APPROVED")
+    sdlc_approve(artifact="requirements.json", status="APPROVED")
+    sdlc_approve(artifact="architecture.md", status="APPROVED")
+    ```
+  </Step>
+  <Step title="Build and validate">
+    ```text
+    sdlc_build_next()
+    sdlc_validate()
+    sdlc_status()
+    ```
+  </Step>
+</Steps>
+
+## Try without installing
+
+Run RStack once without a permanent install:
+
+```bash
+pi -e /path/to/SDLC-rstack/extensions/rstack-sdlc.ts
+```
+
+## Install in Claude Code
+
+<Steps>
+  <Step title="Set RSTACK_HOME">
+    ```bash
+    export RSTACK_HOME=/path/to/SDLC-rstack
+    ```
+  </Step>
+  <Step title="Copy assets into your project">
+    ```bash
+    mkdir -p .claude/agents/rstack .claude/commands/rstack .rstack/vendor/rstack
+    cp -R "$RSTACK_HOME/agents" .rstack/vendor/rstack/
+    cp -R "$RSTACK_HOME/skills" .rstack/vendor/rstack/
+    cp -R "$RSTACK_HOME/plugins" .rstack/vendor/rstack/
+    cp -R "$RSTACK_HOME/prompts" .rstack/vendor/rstack/
+    cp -R "$RSTACK_HOME/agents"/* .claude/agents/rstack/
+    ```
+  </Step>
+  <Step title="Add RStack instructions to CLAUDE.md">
+    ```markdown
+    # RStack SDLC
+    Use RStack SDLC from `.rstack/vendor/rstack`.
+    Start with `.rstack/vendor/rstack/agents/core/orchestrator.md`.
+    Write all run state under `.rstack/runs/<run_id>/`.
+    Require specs, approvals, traceability, builder.json, and validation.json.
+    Never claim DONE without evidence.
+    ```
+  </Step>
+</Steps>
+
+<Tip>
+  See the [Adapters](/adapters/pi) section for installation guides for Codex CLI, Gemini CLI, Qwen Code, and universal asset-only mode.
+</Tip>
+
+## What happens after install
+
+RStack creates a `.rstack/` directory in your project with:
+
+```text
+.rstack/
+  memory/
+    learnings.jsonl        # Accumulated cross-run learnings
+  registry/
+    registry.json          # Full asset manifest
+    agents.json
+    skills.json
+    plugins.json
+    routing.json           # Pipeline routing map
+  runs/
+    <run_id>/
+      manifest.json
+      plan.md
+      tasks.json
+      approvals.json
+      traceability.json
+      specs/               # Generated spec artifacts
+      tasks/               # Per-task builder + validator contracts
+```
+
+Every run is inspectable, resumable, and auditable.

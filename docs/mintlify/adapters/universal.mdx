@@ -1,0 +1,57 @@
+---
+title: "Universal Adapter"
+description: "Use RStack with any agent via the universal bootstrap prompt."
+---
+
+## Overview
+
+RStack can run in any framework that can read files. The universal adapter requires no native integration — just clone the repo, set `RSTACK_HOME`, and use the bootstrap prompt.
+
+## Setup
+
+```bash
+git clone https://github.com/richard-devbot/SDLC-rstack.git ~/rstack-agents
+export RSTACK_HOME=~/rstack-agents
+```
+
+Or use a local checkout:
+
+```bash
+export RSTACK_HOME=/path/to/SDLC-rstack
+```
+
+## Bootstrap prompt
+
+Paste this into any agent's system prompt or first message:
+
+```text
+Use RStack SDLC from $RSTACK_HOME.
+Read agents/core/orchestrator.md first.
+Use agents/core/builder.md for implementation tasks.
+Use agents/core/validator.md for read-only verification.
+Use agents/sdlc/ for lifecycle routing.
+Use skills/ and plugins/ only when relevant.
+Write run state under .rstack/runs/<run_id>/.
+Require specs, approvals, traceability, builder.json, validation.json, and command evidence.
+Never claim DONE without evidence.
+```
+
+## Limitations
+
+Without a native adapter, RStack runs in a reduced mode:
+- No automatic lifecycle hooks
+- No automatic destructive action blocking
+- No native slash commands
+- All lifecycle coordination via prompt
+
+The full agent/skill/plugin library (196 agents, 156 skills, 72 plugins) is still available as file context.
+
+## Planned adapters
+
+```text
+adapters/mcp          → Expose RStack tools to MCP clients
+adapters/claude-code  → Export agents/commands/skills into Claude Code layout
+adapters/codex        → Generate AGENTS.md + task runner
+adapters/gemini       → Generate GEMINI.md + command pack
+adapters/sdk          → Node/Python library for custom harnesses
+```

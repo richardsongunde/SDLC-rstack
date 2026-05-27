@@ -1,0 +1,150 @@
+---
+title: "Plugins & Skills"
+description: "How RStack's 72 plugins and 156 skills extend the agent's capabilities."
+---
+
+## Skills
+
+Skills are reusable workflow instructions. They are Markdown files that describe how to approach a specific task — like code review, OWASP security checks, or API documentation.
+
+**Location:** `skills/**/SKILL.md`
+
+**Example skill structure:**
+```text
+skills/
+  security-owasp/
+    SKILL.md
+  code-review-pr/
+    SKILL.md
+  api-documentation/
+    SKILL.md
+  frontend-design/
+    SKILL.md
+```
+
+Skills are **included in task packets** when the orchestrator determines they are relevant. A builder working on an auth module might automatically receive the `security-owasp` and `code-patterns` skills.
+
+### Using skills from the CLI
+
+```bash
+# List all available skills
+rstack-agents list skills
+
+# Example output
+156 skills found:
+  security-owasp          → Security review using OWASP Top 10
+  code-review-pr          → Pull request code review checklist
+  api-documentation       → OpenAPI/Swagger documentation patterns
+  frontend-design         → UI component and accessibility guidance
+  ...
+```
+
+---
+
+## Plugins
+
+Plugins are **domain packs**. Each plugin bundles together:
+
+```text
+plugins/<domain>/
+  plugin.json             ← Manifest with domain, agents, skills, commands
+  agents/
+    *.md                  ← Domain-specific agent instructions
+  skills/
+    **/SKILL.md           ← Domain-specific skills
+  commands/
+    *.md                  ← Slash command definitions
+```
+
+### Available plugin domains (sample)
+
+| Plugin | Domain |
+|---|---|
+| `backend-development` | REST APIs, databases, auth |
+| `frontend-design` | React, Vue, CSS, accessibility |
+| `cicd-automation` | GitHub Actions, CircleCI, Jenkins |
+| `cloud-infrastructure` | AWS, GCP, Azure, Terraform |
+| `api-testing-observability` | Jest, Playwright, Datadog |
+| `security-threat-model` | STRIDE, OWASP, penetration testing |
+| `code-refactoring` | Patterns, cleanup, technical debt |
+| `data-engineering` | SQL, pipelines, analytics |
+| `documentation-writing` | Technical writing, API docs |
+| `blockchain-web3` | Smart contracts, DeFi |
+
+### How plugins are selected
+
+The orchestrator selects plugins based on the task domain. For a task tagged `backend`:
+
+1. Looks up `routing.json` for the `backend` domain
+2. Selects `plugin.backend-development`
+3. Includes the plugin manifest and the specific nested agent/skill needed
+4. Adds it to the builder's task packet
+
+```json
+{
+  "task_id": "task_004",
+  "domain": "backend",
+  "pipeline_agents": ["agent.07-code"],
+  "specialists": ["plugin.backend-development/agents/api-builder"],
+  "skills": ["security-owasp", "code-patterns"]
+}
+```
+
+### Adding plugins
+
+```bash
+# Add a domain plugin
+rstack-agents add plugin backend-development
+
+# List all installed plugins
+rstack-agents list plugins
+```
+
+### Writing a custom plugin
+
+Create the plugin structure in `.rstack/plugins/`:
+
+```bash
+mkdir -p .rstack/plugins/my-domain/{agents,skills,commands}
+```
+
+`plugin.json`:
+```json
+{
+  "id": "my-domain",
+  "name": "My Domain Pack",
+  "version": "1.0.0",
+  "domain": ["my-domain"],
+  "agents": ["agents/my-specialist.md"],
+  "skills": ["skills/my-skill/SKILL.md"],
+  "commands": ["commands/my-command.md"]
+}
+```
+
+The registry will pick up your plugin on the next `rstack-agents validate` run.
+
+---
+
+## Prompts
+
+Prompts are command-style workflow templates. They give the agent a scripted approach to common tasks.
+
+**Location:** `prompts/*.md`
+
+**Count:** 36 prompts included
+
+```bash
+rstack-agents list prompts
+# Example:
+#   api-design.md
+#   database-migration.md
+#   release-checklist.md
+#   security-review.md
+#   ...
+```
+
+Prompts are exposed as slash commands in Pi:
+```text
+/sdlc
+/sdlc-agents
+```

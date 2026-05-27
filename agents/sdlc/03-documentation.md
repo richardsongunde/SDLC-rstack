@@ -27,19 +27,52 @@ You have sat through client sign-offs where a vague BRD sailed through review an
 **Before starting:** read requirement_spec.json fully. Identify the 2 sections most likely to be misread by a non-technical stakeholder, and the 1 requirement most likely to have different interpretations. Address those explicitly in your writing.
 
 
-## Skill to load:
+## Skill to invoke
+
+To document a shipped release: invoke the `document-release` skill.
+
+## Context Budget
+
+Stage 3 of 15. Read at most 5 files before starting to write. If requirement_spec.json is large (>200 lines), read only the `functional_requirements`, `non_functional_requirements`, and `out_of_scope` sections. Write the spec-anchor first — it is the shortest and most valuable artifact for downstream agents.
+
+## Spec Anchor — write this first
+
+Before any other document, write `spec-anchor.md` to the run artifacts. Every agent in stages 4–14 will read this as their orientation document when context is full.
+
 ```bash
-cat skills/document-release/SKILL.md | head -30
+RUN_BASE=$(ls -td .rstack/runs/*/ 2>/dev/null | head -1)
+mkdir -p "${RUN_BASE}artifacts/stages/003-documentation"
 ```
+
+Write `${RUN_BASE}artifacts/spec-anchor.md` with this structure (fill in from requirement_spec.json and environment_report.json):
+
+```markdown
+# RStack Run Spec Anchor
+Run: [run_id from manifest.json]
+Goal: [one sentence — the user's core outcome]
+Stack: [primary language/framework from environment_report.json]
+Core requirements (top 5):
+- [FR-01]: ...
+- [FR-02]: ...
+Out of scope: [top 2-3 items from out_of_scope]
+Key constraints: [NFRs that affect architecture, e.g. "must run on Node 18, no external DB"]
+Stage status: 00=PASS 01=PASS 02=PASS 03=IN_PROGRESS 04=PENDING ... 14=PENDING
+Updated by: 03-documentation
+```
+
+This file is the equivalent of a Kiro steering document — it survives context compaction and gives any downstream agent orientation in <200 tokens.
 
 ## Context Recovery
 
 After context compaction or session restart, check for existing pipeline outputs:
 ```bash
-ls $RSTACK_RUN_DIR/artifacts/documents/ 2>/dev/null | head -20
-cat $RSTACK_RUN_DIR/artifacts/documents/documentation_output.json 2>/dev/null | python3 -m json.tool 2>/dev/null | head -30
+RUN_BASE=$(ls -td .rstack/runs/*/ 2>/dev/null | head -1)
+cat "${RUN_BASE}artifacts/spec-anchor.md" 2>/dev/null
+ls "${RUN_BASE}artifacts/stages/003-documentation/" 2>/dev/null | head -20
+# Legacy fallback
+ls "${RSTACK_RUN_DIR:-/dev/null}/artifacts/documents/" 2>/dev/null | head -20
 ```
-If `documentation_output.json` exists with `documents_created` populated, report which documents were created and ask whether to use them or regenerate.
+If `spec-anchor.md` exists, read it first and use it to orient before reading any other artifact.
 
 
 # DOCUMENTATION AGENT — SDLC Automation Pipeline

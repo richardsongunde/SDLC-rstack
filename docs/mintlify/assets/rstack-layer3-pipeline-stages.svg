@@ -1,0 +1,266 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 680" width="100%" height="100%">
+  <defs>
+    <!-- Styles -->
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap');
+      text {
+        font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      }
+      .main-title { font-weight: 700; font-size: 18px; fill: #0F172A; }
+      .main-subtitle { font-weight: 500; font-size: 11px; fill: #64748B; }
+      .section-title { font-weight: 700; font-size: 13px; fill: #1E293B; }
+      .card-title { font-weight: 700; font-size: 11.5px; fill: #0F172A; }
+      .card-subtitle { font-weight: 600; font-size: 9px; fill: #64748B; }
+      .bullet-text { font-weight: 400; font-size: 10px; fill: #334155; }
+      .code-text { font-family: monospace; font-size: 9px; fill: #0F172A; }
+      .stage-pill { font-weight: 700; font-size: 9.5px; fill: #0F172A; }
+      .notification-text { font-weight: 600; font-size: 9px; fill: #C2410C; }
+    </style>
+
+    <!-- Filters -->
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#0F172A" flood-opacity="0.04" />
+    </filter>
+
+    <!-- Gradients -->
+    <linearGradient id="orange-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFAF5" />
+      <stop offset="100%" stop-color="#FFF3E0" />
+    </linearGradient>
+    <linearGradient id="blue-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F5F9FF" />
+      <stop offset="100%" stop-color="#E1EFFE" />
+    </linearGradient>
+    <linearGradient id="green-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F0FDF4" />
+      <stop offset="100%" stop-color="#DCFCE7" />
+    </linearGradient>
+
+    <!-- Markers -->
+    <marker id="arr-orange" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#EA580C" />
+    </marker>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="100%" height="100%" fill="#F8FAFC" rx="12" />
+
+  <!-- Header -->
+  <g transform="translate(40, 35)">
+    <text x="0" y="0" class="main-title">RStack SDLC — 15-Stage Pipeline Flow &amp; Handoffs</text>
+    <text x="0" y="16" class="main-subtitle">A detailed breakdown of all 15 stages, their output JSON artifacts, and real-time notification alerts</text>
+  </g>
+
+  <!-- ==================== STAGE CARDS BY PHASES ==================== -->
+
+  <!-- TRACK 1: ALIGNMENT & SCOPE -->
+  <g transform="translate(40, 80)" filter="url(#shadow)">
+    <rect width="250" height="420" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" />
+    <rect width="250" height="34" rx="12" fill="url(#orange-grad)" />
+    <rect y="24" width="250" height="10" fill="url(#orange-grad)" />
+    <text x="20" y="21" class="section-title" fill="#C2410C">Phase 1: Alignment &amp; Scope</text>
+
+    <!-- Stage 00 -->
+    <g transform="translate(15, 55)">
+      <rect width="220" height="52" rx="6" fill="#F8FAFC" stroke="#E2E8F0" />
+      <text x="12" y="18" class="stage-pill">00-environment</text>
+      <text x="12" y="32" class="bullet-text">Inspects node / os versions</text>
+      <text x="12" y="44" class="code-text" fill="#C2410C">➔ environment_report.json</text>
+    </g>
+
+    <!-- Stage 01 -->
+    <g transform="translate(15, 120)">
+      <rect width="220" height="52" rx="6" fill="#F8FAFC" stroke="#E2E8F0" />
+      <text x="12" y="18" class="stage-pill">01-transcript</text>
+      <text x="12" y="32" class="bullet-text">Gathers raw user conversations</text>
+      <text x="12" y="44" class="code-text" fill="#C2410C">➔ transcript.json</text>
+    </g>
+
+    <!-- Stage 02 -->
+    <g transform="translate(15, 185)">
+      <rect width="220" height="52" rx="6" fill="#F8FAFC" stroke="#E2E8F0" />
+      <text x="12" y="18" class="stage-pill">02-requirements</text>
+      <text x="12" y="32" class="bullet-text">Freezes business scope targets</text>
+      <text x="12" y="44" class="code-text" fill="#C2410C">➔ requirements.json</text>
+    </g>
+
+    <!-- Stage 03 -->
+    <g transform="translate(15, 250)">
+      <rect width="220" height="52" rx="6" fill="#F8FAFC" stroke="#E2E8F0" />
+      <text x="12" y="18" class="stage-pill">03-documentation</text>
+      <text x="12" y="32" class="bullet-text">Indexes target codebase docs</text>
+      <text x="12" y="44" class="code-text" fill="#C2410C">➔ documentation.json</text>
+    </g>
+
+    <!-- Handoff to Planning -->
+    <g transform="translate(15, 315)">
+      <rect width="220" height="85" rx="8" fill="#FFF7ED" stroke="#FED7AA" />
+      <text x="12" y="20" class="card-title" fill="#C2410C">Audit Handoff Gate</text>
+      <text x="12" y="36" class="bullet-text">• Freezes context.md</text>
+      <text x="12" y="50" class="bullet-text">• Writes requirements metadata</text>
+      <text x="12" y="64" class="bullet-text">• Checks human scope signoff</text>
+      <circle cx="202" cy="20" r="6" fill="#F97316" />
+    </g>
+  </g>
+
+
+  <!-- TRACK 2: PLANNING & DESIGN -->
+  <g transform="translate(330, 80)" filter="url(#shadow)">
+    <rect width="250" height="420" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" />
+    <rect width="250" height="34" rx="12" fill="url(#orange-grad)" />
+    <rect y="24" width="250" height="10" fill="url(#orange-grad)" />
+    <text x="20" y="21" class="section-title" fill="#C2410C">Phase 2: Planning &amp; Design</text>
+
+    <!-- Stage 04 -->
+    <g transform="translate(15, 55)">
+      <rect width="220" height="52" rx="6" fill="#F8FAFC" stroke="#E2E8F0" />
+      <text x="12" y="18" class="stage-pill">04-planning</text>
+      <text x="12" y="32" class="bullet-text">Generates task lists and plan.md</text>
+      <text x="12" y="44" class="code-text" fill="#C2410C">➔ plan.json</text>
+    </g>
+
+    <!-- Stage 05 -->
+    <g transform="translate(15, 120)">
+      <rect width="220" height="52" rx="6" fill="#F8FAFC" stroke="#E2E8F0" />
+      <text x="12" y="18" class="stage-pill">05-jira</text>
+      <text x="12" y="32" class="bullet-text">Maps task steps to Jira tickets</text>
+      <text x="12" y="44" class="code-text" fill="#C2410C">➔ jira_tickets.json</text>
+    </g>
+
+    <!-- Stage 06 -->
+    <g transform="translate(15, 185)">
+      <rect width="220" height="52" rx="6" fill="#F8FAFC" stroke="#E2E8F0" />
+      <text x="12" y="18" class="stage-pill">06-architecture</text>
+      <text x="12" y="32" class="bullet-text">Enforces technical design plans</text>
+      <text x="12" y="44" class="code-text" fill="#C2410C">➔ system_design.json</text>
+    </g>
+
+    <!-- Stage 14 -->
+    <g transform="translate(15, 250)">
+      <rect width="220" height="52" rx="6" fill="#F8FAFC" stroke="#E2E8F0" />
+      <text x="12" y="18" class="stage-pill">14-cost-estimation</text>
+      <text x="12" y="32" class="bullet-text">Pre-estimates execution dollar budget</text>
+      <text x="12" y="44" class="code-text" fill="#C2410C">➔ cost_estimate.json</text>
+    </g>
+
+    <!-- Handoff to Construction -->
+    <g transform="translate(15, 315)">
+      <rect width="220" height="85" rx="8" fill="#FFF7ED" stroke="#FED7AA" />
+      <text x="12" y="20" class="card-title" fill="#C2410C">Audit Handoff Gate</text>
+      <text x="12" y="36" class="bullet-text">• Verifies system design matches</text>
+      <text x="12" y="50" class="bullet-text">• Locks cost budget estimate bounds</text>
+      <text x="12" y="64" class="bullet-text">• Enforces human architecture gate</text>
+      <circle cx="202" cy="20" r="6" fill="#F97316" />
+    </g>
+  </g>
+
+
+  <!-- TRACK 3: CONSTRUCTION & AUDIT -->
+  <g transform="translate(620, 80)" filter="url(#shadow)">
+    <rect width="250" height="420" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" />
+    <rect width="250" height="34" rx="12" fill="url(#orange-grad)" />
+    <rect y="24" width="250" height="10" fill="url(#orange-grad)" />
+    <text x="20" y="21" class="section-title" fill="#C2410C">Phase 3: Construction &amp; Audit</text>
+
+    <!-- Stage 07 -->
+    <g transform="translate(15, 55)">
+      <rect width="220" height="52" rx="6" fill="#F8FAFC" stroke="#E2E8F0" />
+      <text x="12" y="18" class="stage-pill">07-code</text>
+      <text x="12" y="32" class="bullet-text">Builds logic changes in Sandbox</text>
+      <text x="12" y="44" class="code-text" fill="#C2410C">➔ code_report.json</text>
+    </g>
+
+    <!-- Stage 08 -->
+    <g transform="translate(15, 120)">
+      <rect width="220" height="52" rx="6" fill="#F8FAFC" stroke="#E2E8F0" />
+      <text x="12" y="18" class="stage-pill">08-testing</text>
+      <text x="12" y="32" class="bullet-text">Verifies codebase with test suites</text>
+      <text x="12" y="44" class="code-text" fill="#C2410C">➔ test_report.json</text>
+    </g>
+
+    <!-- Stage 12 -->
+    <g transform="translate(15, 185)">
+      <rect width="220" height="52" rx="6" fill="#F8FAFC" stroke="#E2E8F0" />
+      <text x="12" y="18" class="stage-pill">12-security-threat-model</text>
+      <text x="12" y="32" class="bullet-text">Runs STRIDE vulnerability scans</text>
+      <text x="12" y="44" class="code-text" fill="#C2410C">➔ threat_model.json</text>
+    </g>
+
+    <!-- Stage 13 -->
+    <g transform="translate(15, 250)">
+      <rect width="220" height="52" rx="6" fill="#F8FAFC" stroke="#E2E8F0" />
+      <text x="12" y="18" class="stage-pill">13-compliance-checker</text>
+      <text x="12" y="32" class="bullet-text">Validates GDPR regulatory policies</text>
+      <text x="12" y="44" class="code-text" fill="#C2410C">➔ compliance_report.json</text>
+    </g>
+
+    <!-- Handoff to Delivery -->
+    <g transform="translate(15, 315)">
+      <rect width="220" height="85" rx="8" fill="#FFF7ED" stroke="#FED7AA" />
+      <text x="12" y="20" class="card-title" fill="#C2410C">Audit Handoff Gate</text>
+      <text x="12" y="36" class="bullet-text">• Asserts structural contracts match</text>
+      <text x="12" y="50" class="bullet-text">• Verifies test log exit validation</text>
+      <text x="12" y="64" class="bullet-text">• Appends evidence to evidence.jsonl</text>
+      <circle cx="202" cy="20" r="6" fill="#F97316" />
+    </g>
+  </g>
+
+
+  <!-- TRACK 4: RELEASE & MEMORY -->
+  <g transform="translate(910, 80)" filter="url(#shadow)">
+    <rect width="250" height="420" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" />
+    <rect width="250" height="34" rx="12" fill="url(#orange-grad)" />
+    <rect y="24" width="250" height="10" fill="url(#orange-grad)" />
+    <text x="20" y="21" class="section-title" fill="#C2410C">Phase 4: Release &amp; Memory</text>
+
+    <!-- Stage 09 -->
+    <g transform="translate(15, 55)">
+      <rect width="220" height="52" rx="6" fill="#F8FAFC" stroke="#E2E8F0" />
+      <text x="12" y="18" class="stage-pill">09-deployment</text>
+      <text x="12" y="32" class="bullet-text">Prepares secure release stubs</text>
+      <text x="12" y="44" class="code-text" fill="#C2410C">➔ deployment_report.json</text>
+    </g>
+
+    <!-- Stage 10 -->
+    <g transform="translate(15, 120)">
+      <rect width="220" height="52" rx="6" fill="#F8FAFC" stroke="#E2E8F0" />
+      <text x="12" y="18" class="stage-pill">10-summary</text>
+      <text x="12" y="32" class="bullet-text">Assembles developer deliverables</text>
+      <text x="12" y="44" class="code-text" fill="#C2410C">➔ summary.json</text>
+    </g>
+
+    <!-- Stage 11 -->
+    <g transform="translate(15, 185)">
+      <rect width="220" height="52" rx="6" fill="#F8FAFC" stroke="#E2E8F0" />
+      <text x="12" y="18" class="stage-pill">11-feedback-loop</text>
+      <text x="12" y="32" class="bullet-text">Aggregates loop performance metrics</text>
+      <text x="12" y="44" class="code-text" fill="#C2410C">➔ feedback.json</text>
+    </g>
+
+    <!-- Learning Output -->
+    <g transform="translate(15, 250)">
+      <rect width="220" height="150" rx="8" fill="#F0FDF4" stroke="#BBF7D0" />
+      <text x="12" y="20" class="card-title" fill="#166534">Memory &amp; Handoff Gate</text>
+      <text x="12" y="36" class="bullet-text" fill="#166534">• Saves episodic memory block</text>
+      <text x="12" y="50" class="bullet-text" fill="#166534">• Logs full spec-to-code traceability</text>
+      
+      <rect x="12" y="62" width="196" height="1" fill="#BBF7D0" />
+      <!-- Slack notification mockup -->
+      <rect x="12" y="74" width="196" height="64" rx="4" fill="#FFFFFF" stroke="#BBF7D0" />
+      <circle cx="28" cy="94" r="8" fill="#4A154B" />
+      <text x="28" y="97.5" font-size="8px" fill="#FFFFFF" font-weight="700" text-anchor="middle">S</text>
+      <text x="42" y="93" font-size="8.5px" font-weight="700" fill="#1E293B">Slack Notification</text>
+      <text x="42" y="105" font-size="7.5px" fill="#64748B">Run #004 PASS! Cost: $0.14</text>
+      <text x="42" y="117" font-size="7px" fill="#16A34A" font-weight="600">Traceability mapped &amp; deployed</text>
+    </g>
+  </g>
+
+
+  <!-- ==================== FLOW ROUTINGS ==================== -->
+  
+  <!-- Horizontal progress chevrons -->
+  <path d="M 290 280 H 330" fill="none" stroke="#EA580C" stroke-width="1.5" marker-end="url(#arr-orange)" />
+  <path d="M 580 280 H 620" fill="none" stroke="#EA580C" stroke-width="1.5" marker-end="url(#arr-orange)" />
+  <path d="M 870 280 H 910" fill="none" stroke="#EA580C" stroke-width="1.5" marker-end="url(#arr-orange)" />
+
+</svg>
