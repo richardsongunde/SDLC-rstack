@@ -12,6 +12,14 @@ export const DEFAULT_MEMORY_CONFIG = Object.freeze({
   minScore: 0.08,
   writePolicy: 'validator-approved-only',
   embeddingProvider: 'none',
+  decayEnabled: true,
+  recencyHalfLifeDays: 30,
+  staleAfterDays: 90,
+  minDecayScore: 0.05,
+  fusionWeights: { lexical: 0.55, entity: 0.45 },
+  compactionEnabled: true,
+  compactionThresholdEpisodes: 100,
+  keepRecentEpisodes: 20,
 });
 
 export const EPISODE_REQUIRED_FIELDS = Object.freeze([
@@ -64,8 +72,10 @@ export function mergeMemoryConfig(config = {}) {
   merged.topK = Number.isFinite(Number(merged.topK)) ? Math.max(1, Math.min(10, Number(merged.topK))) : DEFAULT_MEMORY_CONFIG.topK;
   merged.maxInjectedChars = Number.isFinite(Number(merged.maxInjectedChars)) ? Math.max(400, Math.min(8000, Number(merged.maxInjectedChars))) : DEFAULT_MEMORY_CONFIG.maxInjectedChars;
   merged.minScore = Number.isFinite(Number(merged.minScore)) ? Math.max(0, Math.min(1, Number(merged.minScore))) : DEFAULT_MEMORY_CONFIG.minScore;
+  merged.recencyHalfLifeDays = Number.isFinite(Number(merged.recencyHalfLifeDays)) ? Math.max(1, Number(merged.recencyHalfLifeDays)) : DEFAULT_MEMORY_CONFIG.recencyHalfLifeDays;
+  merged.minDecayScore = Number.isFinite(Number(merged.minDecayScore)) ? Math.max(0, Math.min(1, Number(merged.minDecayScore))) : DEFAULT_MEMORY_CONFIG.minDecayScore;
   if (!['jsonl'].includes(merged.backend)) merged.backend = DEFAULT_MEMORY_CONFIG.backend;
-  if (!['lexical'].includes(merged.retrieval)) merged.retrieval = DEFAULT_MEMORY_CONFIG.retrieval;
+  if (!['lexical', 'fused'].includes(merged.retrieval)) merged.retrieval = DEFAULT_MEMORY_CONFIG.retrieval;
   if (!['validator-approved-only', 'validation-attempts'].includes(merged.writePolicy)) merged.writePolicy = DEFAULT_MEMORY_CONFIG.writePolicy;
   return merged;
 }
@@ -166,6 +176,31 @@ export function memoryScore({ relevance = 0, importance = 0.5, quality = 0.5, cr
   return relevance * 0.45 + Number(importance || 0.5) * 0.2 + Number(quality || 0.5) * 0.2 + recency * 0.15;
 }
 
+function computeDecayScore(episode, config, now = new Date()) {
+  const daysSince = hoursOld(episode.created_at, now) / 24;
+  const recencyFactor = Math.exp(-Math.LN2 * daysSince / config.recencyHalfLifeDays);
+  const accessCount = episode.access_count || 0;
+  const frequencyFactor = 1 + Math.log(1 + accessCount) * 0.2;
+  const relevance = episode.retrieval_score || 0;
+  return relevance * recencyFactor * frequencyFactor;
+}
+
+function entityScore(query, episode) {
+  const queryTokens = new Set(tokenize(query));
+  if (!queryTokens.size) return 0;
+  const epEntities = [
+    ...(episode.stage_ids || []),
+    ...(episode.agent_ids || []),
+    episode.task_id || '',
+    episode.run_id || '',
+    ...(episode.files_modified || []),
+  ].flatMap((s) => tokenize(s));
+  const epSet = new Set(epEntities);
+  let hits = 0;
+  for (const token of queryTokens) if (epSet.has(token)) hits++;
+  return queryTokens.size > 0 ? hits / queryTokens.size : 0;
+}
+
 function jsonlPath(dir, name) {
   return join(dir, name);
 }
@@ -246,6 +281,8 @@ export function episodeFromValidation({ projectRoot, manifest, task, builder = {
     evidence_paths: evidencePaths,
     importance: validatorStatus === 'PASS' ? 0.75 : 0.6,
     created_at: nowIso(),
+    access_count: 0,
+    last_accessed_at: null,
     retracted_at: null,
     trusted: validatorStatus === 'PASS',
     memory_summary: memorySummary,
@@ -277,7 +314,7 @@ export function verifyEpisodeSignature(episode) {
   return episode.signature === expected;
 }
 
-export async function appendEpisode(memoryDir, episode) {
+export async function appendEpisode(memoryDir, episode, config = {}) {
   episode.signature = calculateEpisodeSignature(episode);
   const result = validateEpisode(episode);
   if (!result.ok) {
@@ -287,7 +324,77 @@ export async function appendEpisode(memoryDir, episode) {
   await mkdir(memoryDir, { recursive: true });
   const path = jsonlPath(memoryDir, 'episodes.jsonl');
   await appendFile(path, `${JSON.stringify(episode)}\n`);
+  // Auto-compact if enabled and threshold reached (fire-and-forget)
+  if (config?.compactionEnabled !== false) {
+    compactEpisodes(memoryDir, {
+      compactionThresholdEpisodes: config?.compactionThresholdEpisodes ?? 100,
+      keepRecentEpisodes: config?.keepRecentEpisodes ?? 20,
+    }).catch(() => {});
+  }
   return path;
+}
+
+export async function touchEpisodes(memoryDir, episodeIds) {
+  if (!episodeIds?.length) return;
+  const path = join(memoryDir, 'episodes.jsonl');
+  const raw = await readFile(path, 'utf8').catch(() => '');
+  if (!raw) return;
+  const now = new Date().toISOString();
+  const idSet = new Set(episodeIds);
+  const updated = raw.split(/\r?\n/).filter(Boolean).map((line) => {
+    try {
+      const ep = JSON.parse(line);
+      if (!idSet.has(ep.episode_id)) return line;
+      return JSON.stringify({ ...ep, access_count: (ep.access_count || 0) + 1, last_accessed_at: now });
+    } catch { return line; }
+  });
+  const { writeFile } = await import('node:fs/promises');
+  await writeFile(path, updated.join('\n') + '\n');
+}
+
+export async function compactEpisodes(memoryDir, options = {}) {
+  const threshold = options.compactionThresholdEpisodes ?? 100;
+  const keepRecent = options.keepRecentEpisodes ?? 20;
+  const path = join(memoryDir, 'episodes.jsonl');
+  const raw = await readFile(path, 'utf8').catch(() => '');
+  if (!raw) return { compacted: false, reason: 'empty store' };
+
+  const lines = raw.split(/\r?\n/).filter(Boolean);
+  if (lines.length <= threshold) return { compacted: false, reason: `store size ${lines.length} below threshold ${threshold}` };
+
+  // Keep the most recent keepRecent episodes (end of file) + any compaction entries
+  const compactionLines = lines.filter((line) => {
+    try { const ep = JSON.parse(line); return ep.type === 'compaction'; } catch { return false; }
+  });
+  const episodeLines = lines.filter((line) => {
+    try { const ep = JSON.parse(line); return ep.type !== 'compaction'; } catch { return false; }
+  });
+
+  // Deduplicate by episode_id (keep last occurrence)
+  const seen = new Map();
+  for (const line of episodeLines) {
+    try { const ep = JSON.parse(line); if (ep.episode_id) seen.set(ep.episode_id, line); } catch {}
+  }
+  const deduped = [...seen.values()];
+
+  // Keep recent protected tail + compaction entries
+  const toKeep = [
+    ...compactionLines,
+    ...deduped.slice(-keepRecent),
+  ];
+
+  const compactionEntry = JSON.stringify({
+    type: 'compaction',
+    compacted_at: new Date().toISOString(),
+    episodes_compacted: deduped.length - keepRecent,
+    episodes_before: lines.length,
+    episodes_after: toKeep.length,
+  });
+
+  const { writeFile } = await import('node:fs/promises');
+  await writeFile(path, [compactionEntry, ...toKeep].join('\n') + '\n');
+
+  return { compacted: true, episodes_before: lines.length, episodes_after: toKeep.length };
 }
 
 export async function retractEpisode(memoryDir, episodeId, reason = 'retracted') {
@@ -323,7 +430,7 @@ export async function recallEpisodes(memoryDir, options = {}) {
   const branch = options.branch;
   const now = options.now || new Date();
 
-  return rows
+  const results = rows
     .filter((episode) => options.includeUntrusted || episode.trusted !== false)
     .map((episode) => {
       const haystack = [
@@ -337,7 +444,13 @@ export async function recallEpisodes(memoryDir, options = {}) {
         ...(episode.agent_ids || []),
         ...(episode.stage_ids || []),
       ].join(' ');
-      const relevance = tokenScore(query, haystack);
+      const lexical = tokenScore(query, haystack);
+      const entity = config.retrieval === 'lexical' ? 0 : entityScore(query, episode);
+      const weights = config.retrieval === 'lexical' ? { lexical: 1, entity: 0 } : (config.fusionWeights || { lexical: 1, entity: 0 });
+      const totalWeight = weights.lexical + weights.entity;
+      const relevance = totalWeight > 0
+        ? (lexical * weights.lexical + entity * weights.entity) / totalWeight
+        : lexical;
       const sameAgent = (episode.agent_ids || []).some((id) => agentIds.has(id));
       const sameStage = (episode.stage_ids || []).some((id) => stageIds.has(id));
       const sameBranch = branch && episode.branch === branch;
@@ -348,12 +461,22 @@ export async function recallEpisodes(memoryDir, options = {}) {
         quality: episode.quality_score,
         created_at: episode.created_at,
       }, now);
-      return { ...episode, retrieval_score: Number(score.toFixed(4)), relevance: Number(relevance.toFixed(4)), scope_match: Boolean(sameAgent || sameStage || sameBranch) };
+      const decay_score = Number(computeDecayScore({ ...episode, retrieval_score: score }, config, now).toFixed(4));
+      return { ...episode, retrieval_score: Number(score.toFixed(4)), relevance: Number(relevance.toFixed(4)), scope_match: Boolean(sameAgent || sameStage || sameBranch), decay_score, entity_score: Number(entity.toFixed(4)) };
     })
     .filter((episode) => episode.relevance > 0 || episode.scope_match)
     .filter((episode) => episode.retrieval_score >= config.minScore)
+    .filter((episode) => {
+      if (!config.decayEnabled) return true;
+      const decayScore = computeDecayScore(episode, config, now);
+      return decayScore >= config.minDecayScore;
+    })
     .sort((a, b) => b.retrieval_score - a.retrieval_score)
     .slice(0, config.topK);
+
+  // Fire-and-forget access tracking
+  touchEpisodes(memoryDir, results.map((ep) => ep.episode_id)).catch(() => {});
+  return results;
 }
 
 export function formatEpisodesForPrompt(episodes, config = {}) {
