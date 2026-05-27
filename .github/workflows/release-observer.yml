@@ -1,0 +1,167 @@
+name: Release Observer Binaries
+
+# Runs on every version tag push (e.g. v1.0.3)
+# Builds rstack-observer for Win / macOS / Linux and attaches the
+# binaries to the GitHub Release as downloadable assets.
+# Non-developer stakeholders (PMs, architects, compliance officers)
+# just visit the Releases page, download one file, and double-click.
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write   # needed to upload release assets
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────
+  # Build all three platform binaries in parallel
+  # ─────────────────────────────────────────────────────────────────
+  build:
+    name: Build ${{ matrix.label }} binary
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Windows
+            os: windows-latest
+            pkg_target: node18-win-x64
+            artifact_name: rstack-observer-win.exe
+            asset_name: rstack-observer-win.exe
+
+          - label: macOS
+            os: macos-latest
+            pkg_target: node18-macos-x64
+            artifact_name: rstack-observer-macos
+            asset_name: rstack-observer-macos
+
+          - label: Linux
+            os: ubuntu-latest
+            pkg_target: node18-linux-x64
+            artifact_name: rstack-observer-linux
+            asset_name: rstack-observer-linux
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build binary (${{ matrix.label }})
+        run: |
+          npx pkg bin/rstack-observer.js \
+            --target ${{ matrix.pkg_target }} \
+            --output dist/${{ matrix.artifact_name }} \
+            --compress GZip
+        shell: bash
+
+      - name: Upload binary as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: dist/${{ matrix.asset_name }}
+          retention-days: 1
+
+  # ─────────────────────────────────────────────────────────────────
+  # Collect all three binaries and attach to the GitHub Release
+  # ─────────────────────────────────────────────────────────────────
+  release:
+    name: Attach binaries to GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+
+      - name: Flatten artifact directories
+        # download-artifact@v4 puts each artifact in its own subdirectory
+        run: |
+          find dist/ -type f | xargs -I{} mv {} dist/ 2>/dev/null || true
+          find dist/ -maxdepth 1 -type d -empty -delete 2>/dev/null || true
+          ls -lh dist/
+
+      - name: Make binaries executable (macOS / Linux)
+        run: |
+          chmod +x dist/rstack-observer-macos dist/rstack-observer-linux 2>/dev/null || true
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Create / update GitHub Release and upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.VERSION }}
+          name: "RStack ${{ steps.version.outputs.VERSION }}"
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            ## RStack Observer — live SDLC observability dashboard
+
+            Zero-install standalone binaries for every platform.
+            No Node.js, no Docker, no admin rights required.
+
+            ---
+
+            ### Download & run (non-developers / corporate)
+
+            | Platform | File | How to run |
+            |---|---|---|
+            | **Windows** | `rstack-observer-win.exe` | Double-click the file |
+            | **macOS** | `rstack-observer-macos` | `chmod +x rstack-observer-macos && ./rstack-observer-macos` |
+            | **Linux** | `rstack-observer-linux` | `chmod +x rstack-observer-linux && ./rstack-observer-linux` |
+
+            The dashboard opens in your default browser automatically at **http://localhost:3007**.
+
+            Point at any project:
+            ```
+            rstack-observer-win.exe --project C:\path\to\my-project
+            ./rstack-observer-macos --project /path/to/my-project
+            ```
+
+            ---
+
+            ### For developers (Node.js / npm)
+
+            ```bash
+            # If rstack-agents is installed (globally or as devDep)
+            npx rstack-agents observer
+
+            # Or via the bin alias
+            rstack-observer
+
+            # Custom port
+            rstack-observer --port 4000
+            ```
+
+            ---
+
+            ### Share with your team (same network)
+
+            1. Run `rstack-observer` on your machine
+            2. Find your local IP: `ipconfig` (Win) / `ifconfig` (Mac/Linux)
+            3. Share **http://&lt;your-IP&gt;:3007** — anyone on the same network can watch live
+
+          files: |
+            dist/rstack-observer-win.exe
+            dist/rstack-observer-macos
+            dist/rstack-observer-linux
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
