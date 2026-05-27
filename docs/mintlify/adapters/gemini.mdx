@@ -1,0 +1,47 @@
+---
+title: "Gemini CLI Adapter"
+description: "Asset adapter for Gemini CLI via GEMINI.md."
+---
+
+## Installation
+
+```bash
+export RSTACK_HOME=/path/to/SDLC-rstack
+mkdir -p .rstack/vendor/rstack
+cp -R "$RSTACK_HOME/agents"  .rstack/vendor/rstack/
+cp -R "$RSTACK_HOME/skills"  .rstack/vendor/rstack/
+cp -R "$RSTACK_HOME/plugins" .rstack/vendor/rstack/
+cp -R "$RSTACK_HOME/prompts" .rstack/vendor/rstack/
+```
+
+## GEMINI.md configuration
+
+```markdown
+# RStack SDLC
+
+Use RStack SDLC from `.rstack/vendor/rstack`.
+Start with `.rstack/vendor/rstack/agents/core/orchestrator.md`.
+Use the SDLC pipeline in `.rstack/vendor/rstack/agents/sdlc/`.
+Use plugin packs from `.rstack/vendor/rstack/plugins/` only when relevant to the task domain.
+Maintain `.rstack/runs/<run_id>/` with specs, approvals, traceability, tasks, builder.json, and validation.json.
+Do not perform destructive actions without explicit human approval.
+Do not claim DONE without command evidence.
+```
+
+Then run Gemini CLI from that project directory.
+
+## Qwen Code (same pattern)
+
+For Qwen Code, create `AGENTS.md` instead:
+
+```markdown
+# RStack SDLC
+
+Use RStack SDLC from `.rstack/vendor/rstack`.
+Act as the RStack orchestrator first, not as a direct coder.
+Read `.rstack/vendor/rstack/agents/core/orchestrator.md`, then route to builder and validator contracts.
+Use `.rstack/vendor/rstack/agents/sdlc/` for lifecycle stages.
+Use `.rstack/vendor/rstack/plugins/` as domain packs.
+Write `.rstack/runs/<run_id>/` state and preserve traceability.
+Require human approval gates before implementation and release decisions.
+```

@@ -182,3 +182,12 @@ test('sanitizeMemoryText removes code blocks and instruction-like text', () => {
   assert.ok(text.includes('[instruction-like text removed]'));
   assert.ok(text.includes('[REDACTED]'));
 });
+
+test('sanitizeMemoryText redacts Authorization Bearer tokens and handles keyless tokens correctly', () => {
+  const text = sanitizeMemoryText('Authorization: Bearer abc123def456 secret sk-123456789012 ak_abcdefghijkl');
+  assert.ok(!text.includes('abc123def456'));
+  assert.ok(text.includes('Authorization=[REDACTED]'));
+  assert.ok(text.includes('[REDACTED]'));
+  assert.ok(!text.includes('undefined'));
+  assert.ok(!text.includes('$1'));
+});

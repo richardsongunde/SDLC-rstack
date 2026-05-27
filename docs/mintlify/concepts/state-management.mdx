@@ -1,0 +1,153 @@
+---
+title: "State Management"
+description: "How RStack stores and manages run state, specs, and traceability."
+---
+
+## Run state directory
+
+Every RStack run creates a versioned directory under `.rstack/runs/`:
+
+```text
+.rstack/
+  memory/
+    learnings.jsonl
+  registry/
+    registry.json
+    agents.json
+    skills.json
+    plugins.json
+    routing.json
+  runs/
+    <run_id>/
+      manifest.json
+      context.md
+      plan.md
+      tasks.json
+      approvals.json
+      traceability.json
+      events.jsonl
+      specs/
+      tasks/
+```
+
+Runs are isolated from each other. Previous runs are never modified.
+
+## Registry files
+
+The registry is generated on demand and indexes all available assets:
+
+| File | Contents |
+|---|---|
+| `registry.json` | Full combined manifest of all assets |
+| `agents.json` | All agents with role, domain, and tools |
+| `skills.json` | All skills with tags and location |
+| `plugins.json` | All plugin packs with domain mapping |
+| `routing.json` | Pipeline-stage-to-agent routing map |
+
+Generate or refresh the registry:
+
+```bash
+rstack-agents validate
+```
+
+## Spec artifacts
+
+RStack generates first-class spec files — not just task JSON:
+
+```text
+specs/
+  product-brief.md         ← Goal, context, constraints
+  requirements.json        ← Functional and non-functional requirements
+  architecture.md          ← System design and implementation plan
+  implementation-report.json
+  qa-report.json
+  security-review.md
+  handoff.md
+  release-readiness.json
+```
+
+## Traceability
+
+`traceability.json` maps every requirement through the entire lifecycle:
+
+```json
+{
+  "requirement_id": "REQ-001",
+  "description": "Users can authenticate with email/password",
+  "design_decision": "JWT with 24h expiry, refresh tokens",
+  "tasks": ["task_003", "task_004"],
+  "files_changed": ["src/auth.js", "tests/auth.test.js"],
+  "tests": ["tests/auth.test.js#L45"],
+  "validation_evidence": "tasks/task_003/validation.json"
+}
+```
+
+This makes it possible to audit: "Was this requirement actually implemented and tested?"
+
+## Approvals
+
+`approvals.json` records explicit human decisions:
+
+```json
+{
+  "approvals": [
+    {
+      "artifact": "plan.md",
+      "status": "APPROVED",
+      "timestamp": "2024-05-25T10:30:00Z",
+      "run_id": "run_20240525_001"
+    },
+    {
+      "artifact": "architecture.md",
+      "status": "APPROVED",
+      "timestamp": "2024-05-25T11:00:00Z",
+      "run_id": "run_20240525_001"
+    }
+  ]
+}
+```
+
+## Events log
+
+`events.jsonl` is an append-only log of every lifecycle event:
+
+```jsonl
+{"type":"run_start","timestamp":"...","goal":"..."}
+{"type":"plan_created","timestamp":"...","task_count":8}
+{"type":"approval","artifact":"plan.md","status":"APPROVED","timestamp":"..."}
+{"type":"task_start","task_id":"task_001","timestamp":"..."}
+{"type":"tool_call","tool":"write","path":"src/auth.js","timestamp":"..."}
+{"type":"task_complete","task_id":"task_001","timestamp":"..."}
+```
+
+## Memory
+
+`learnings.jsonl` accumulates cross-run learnings. Each entry is one learning:
+
+```jsonl
+{"run_id":"run_001","learning":"JWT refresh tokens must be stored in httpOnly cookies, not localStorage","timestamp":"..."}
+{"run_id":"run_001","learning":"Always run npm audit before release","timestamp":"..."}
+```
+
+Future runs can search learnings with `sdlc_memory()` before planning to avoid repeating mistakes.
+
+## Project-local overrides
+
+Projects can extend or override package defaults without forking:
+
+```text
+# Agent overrides
+.rstack/agents/my-custom-builder.md
+.pi/rstack/agents/my-custom-builder.md
+
+# Skill overrides
+.rstack/skills/my-skill/SKILL.md
+
+# Plugin overrides
+.rstack/plugins/my-plugin/plugin.json
+
+# Prompt overrides
+.rstack/prompts/my-workflow.md
+```
+
+Local files take precedence over the package defaults. The registry picks them up automatically on the next `rstack-agents validate` run.

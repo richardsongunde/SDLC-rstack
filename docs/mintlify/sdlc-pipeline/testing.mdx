@@ -1,0 +1,44 @@
+---
+title: "Agent 08 — Testing"
+description: "Senior QA Engineer. Produces test plans, unit tests, integration test outlines, and test_report.json."
+---
+
+<Info>
+  **File:** `agents/sdlc/08-testing.md` · **Model:** Sonnet · **Tools:** Bash, Read, Write
+</Info>
+
+## Purpose
+
+The testing agent writes tests that would catch real bugs — not coverage theater. Tests are behavior-focused, not implementation-focused.
+
+## Core principle
+
+> Test what the user sees and what the attacker tries. Everything else is coverage theater.
+
+## What it covers
+
+- **Happy path** — expected user flows
+- **Error cases** — invalid inputs, missing fields, wrong types
+- **Security cases** — missing tokens, expired tokens, IDOR, injection
+- **Edge cases** — derived from acceptance criteria, not invented
+
+## Outputs
+
+```text
+tests/
+  unit/               ← Unit tests per module
+  integration/        ← Integration test outlines
+  security/           ← Auth and OWASP test cases
+```
+
+```json
+// .rstack/runs/<run_id>/specs/qa-report.json
+{
+  "test_count": 48,
+  "passing": 48,
+  "failing": 0,
+  "coverage": "87%",
+  "security_tests": 12,
+  "skipped_tests": 0
+}
+```

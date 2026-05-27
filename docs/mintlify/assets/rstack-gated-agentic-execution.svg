@@ -1,0 +1,226 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" width="100%" height="100%">
+  <defs>
+    <!-- Styles -->
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap');
+      text {
+        font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      }
+      .main-title { font-weight: 700; font-size: 18px; fill: #0F172A; }
+      .main-subtitle { font-weight: 500; font-size: 11px; fill: #64748B; }
+      .section-title { font-weight: 700; font-size: 12.5px; fill: #1E293B; }
+      .card-title { font-weight: 700; font-size: 12px; fill: #0F172A; }
+      .card-subtitle { font-weight: 600; font-size: 9px; fill: #64748B; }
+      .bullet-text { font-weight: 400; font-size: 10px; fill: #334155; }
+      .badge-label { font-weight: 700; font-size: 8px; fill: #475569; text-anchor: middle; }
+      .flow-label { font-weight: 700; font-size: 9.5px; fill: #2563EB; }
+    </style>
+
+    <!-- Filters -->
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#0F172A" flood-opacity="0.04" />
+    </filter>
+
+    <!-- Gradients -->
+    <linearGradient id="blue-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F5F9FF" />
+      <stop offset="100%" stop-color="#E1EFFE" />
+    </linearGradient>
+    <linearGradient id="purple-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDF8FF" />
+      <stop offset="100%" stop-color="#F5E6FF" />
+    </linearGradient>
+    <linearGradient id="green-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F0FDF4" />
+      <stop offset="100%" stop-color="#DCFCE7" />
+    </linearGradient>
+
+    <!-- Markers -->
+    <marker id="arr-blue" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2563EB" />
+    </marker>
+    <marker id="arr-purple" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#7C3AED" />
+    </marker>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="100%" height="100%" fill="#F8FAFC" rx="12" />
+
+  <!-- Header -->
+  <g transform="translate(40, 35)">
+    <text x="0" y="0" class="main-title">Layer 3 — Orchestrator &amp; Gated Specialist Subagents</text>
+    <text x="0" y="16" class="main-subtitle">How the Orchestrator Pipeline dispatches stage requirements and delegates tasks to specialized visual subagent sandboxes</text>
+  </g>
+
+  <!-- ==================== TOP CENTER: ORCHESTRATOR PIPELINE ==================== -->
+  <g transform="translate(380, 75)" filter="url(#shadow)">
+    <rect width="440" height="110" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" />
+    <rect width="440" height="34" rx="12" fill="url(#blue-grad)" />
+    <rect y="24" width="440" height="10" fill="url(#blue-grad)" />
+    <text x="20" y="21" class="section-title" fill="#1E40AF">👤 The Orchestrator Pipeline (Stage Controller)</text>
+    
+    <g transform="translate(20, 50)">
+      <text x="0" y="16" class="bullet-text" style="font-weight:600;">Central Coordination &amp; Dispatching:</text>
+      <text x="0" y="32" class="bullet-text">• Resolves stage affinities, recalls memories, and compiles prompt.md specs</text>
+      <text x="0" y="46" class="bullet-text">• Delegates task execution to Builder &amp; Validator sandboxes separately</text>
+    </g>
+  </g>
+
+
+  <!-- ==================== BOTTOM LEFT: BUILDER TEAM (ACTIVE WRITE) ==================== -->
+  <g transform="translate(40, 220)" filter="url(#shadow)">
+    <rect width="530" height="240" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" />
+    <rect width="530" height="34" rx="12" fill="url(#purple-grad)" />
+    <rect y="24" width="530" height="10" fill="url(#purple-grad)" />
+    <text x="20" y="21" class="section-title" fill="#6B21A8">🛠️ The Builder Team (Active-Write Sandboxed Subagents)</text>
+
+    <!-- Sandbox Card -->
+    <g transform="translate(20, 55)">
+      <rect width="210" height="165" rx="8" fill="#FDF8FF" stroke="#E9D5FF" />
+      <text x="15" y="22" class="card-title" fill="#581C87">Builder Sandbox</text>
+      <text x="15" y="34" class="card-subtitle" fill="#7E22CE">Writes features and code logic</text>
+      <rect x="15" y="42" width="180" height="1" fill="#E9D5FF" />
+      
+      <text x="15" y="60" class="bullet-text" style="font-weight:600; fill:#581C87;">Process Details:</text>
+      <text x="15" y="74" class="bullet-text">• Enforces write-enabled shell permissions</text>
+      <text x="15" y="88" class="bullet-text">• Modifies files and creates local tests</text>
+      <text x="15" y="102" class="bullet-text">• Outputs builder.json contract pass stubs</text>
+    </g>
+
+    <!-- Available Builder Specialists (Icons Only) -->
+    <g transform="translate(250, 55)">
+      <rect width="260" height="165" rx="8" fill="#FFFFFF" stroke="#E2E8F0" />
+      <text x="15" y="22" class="card-title">Spawning specialist coding subagents:</text>
+      <rect x="15" y="30" width="230" height="1" fill="#E2E8F0" />
+
+      <!-- Horizontal Row of 4 Icon Badges -->
+      
+      <!-- 1. Backend Badge -->
+      <g transform="translate(25, 45)">
+        <circle cx="25" cy="25" r="22" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1.5" />
+        <!-- Server Tower Icon -->
+        <rect x="15" y="15" width="20" height="5" rx="1" fill="#2563EB" />
+        <rect x="15" y="22" width="20" height="5" rx="1" fill="#2563EB" />
+        <rect x="15" y="29" width="20" height="5" rx="1" fill="#2563EB" />
+        <circle cx="18" cy="17.5" r="1" fill="#FFFFFF" />
+        <circle cx="18" cy="24.5" r="1" fill="#FFFFFF" />
+        <circle cx="18" cy="31.5" r="1" fill="#FFFFFF" />
+        <text x="25" y="60" class="badge-label">Backend</text>
+      </g>
+
+      <!-- 2. Frontend Badge -->
+      <g transform="translate(85, 45)">
+        <circle cx="25" cy="25" r="22" fill="#FDF2F8" stroke="#FBCFE8" stroke-width="1.5" />
+        <!-- Layout Grid Icon -->
+        <rect x="15" y="15" width="20" height="16" rx="2" fill="none" stroke="#DB2777" stroke-width="1.5" />
+        <rect x="18" y="18" width="6" height="10" fill="#DB2777" />
+        <rect x="26" y="18" width="6" height="4" fill="#DB2777" />
+        <rect x="26" y="24" width="6" height="4" fill="#DB2777" />
+        <text x="25" y="60" class="badge-label">Frontend</text>
+      </g>
+
+      <!-- 3. DevOps Badge -->
+      <g transform="translate(145, 45)">
+        <circle cx="25" cy="25" r="22" fill="#FFF7ED" stroke="#FED7AA" stroke-width="1.5" />
+        <!-- Gear / Cogwheel Icon -->
+        <circle cx="25" cy="25" r="8" fill="none" stroke="#EA580C" stroke-width="2.5" />
+        <path d="M25 13v4 M25 33v4 M13 25h4 M33 25h4" stroke="#EA580C" stroke-width="2.5" stroke-linecap="round" />
+        <text x="25" y="60" class="badge-label">DevOps</text>
+      </g>
+
+      <!-- 4. Data Badge -->
+      <g transform="translate(205, 45)">
+        <circle cx="25" cy="25" r="22" fill="#F0FDFA" stroke="#99F6E4" stroke-width="1.5" />
+        <!-- Database cylinder Icon -->
+        <ellipse cx="25" cy="18" rx="8" ry="3" fill="#0D9488" />
+        <path d="M17 18v6c0 1.6 3.6 3 8 3s8-1.4 8-3v-6" fill="none" stroke="#0D9488" stroke-width="1.5" />
+        <path d="M17 24v6c0 1.6 3.6 3 8 3s8-1.4 8-3v-6" fill="none" stroke="#0D9488" stroke-width="1.5" />
+        <ellipse cx="25" cy="24" rx="8" ry="3" fill="none" stroke="#FFFFFF" stroke-width="0.5" />
+        <text x="25" y="60" class="badge-label">Data</text>
+      </g>
+    </g>
+  </g>
+
+
+  <!-- ==================== BOTTOM RIGHT: VALIDATOR TEAM (READ ONLY) ==================== -->
+  <g transform="translate(630, 220)" filter="url(#shadow)">
+    <rect width="530" height="240" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" />
+    <rect width="530" height="34" rx="12" fill="url(#green-grad)" />
+    <rect y="24" width="530" height="10" fill="url(#green-grad)" />
+    <text x="20" y="21" class="section-title" fill="#166534">🔍 The Validator Team (Read-Only Verification Subagents)</text>
+
+    <!-- Sandbox Card -->
+    <g transform="translate(20, 55)">
+      <rect width="210" height="165" rx="8" fill="#F0FDF4" stroke="#BBF7D0" />
+      <text x="15" y="22" class="card-title" fill="#14532D">Validator Sandbox</text>
+      <text x="15" y="34" class="card-subtitle" fill="#166534">Verifies Builder deliverables</text>
+      <rect x="15" y="42" width="180" height="1" fill="#BBF7D0" />
+      
+      <text x="15" y="60" class="bullet-text" style="font-weight:600; fill:#14532D;">Process Details:</text>
+      <text x="15" y="74" class="bullet-text" fill="#166534">• Confined to strictly read-only tools</text>
+      <text x="15" y="88" class="bullet-text" fill="#166534">• Executes test suites and exit status</text>
+      <text x="15" y="102" class="bullet-text" fill="#166534">• Saves validation.json review logs</text>
+    </g>
+
+    <!-- Available Validator Specialists (Icons Only) -->
+    <g transform="translate(250, 55)">
+      <rect width="260" height="165" rx="8" fill="#FFFFFF" stroke="#E2E8F0" />
+      <text x="15" y="22" class="card-title">Spawning specialist review subagents:</text>
+      <rect x="15" y="30" width="230" height="1" fill="#E2E8F0" />
+
+      <!-- Horizontal Row of 4 Icon Badges -->
+      
+      <!-- 1. QA Badge -->
+      <g transform="translate(25, 45)">
+        <circle cx="25" cy="25" r="22" fill="#F0FDF4" stroke="#BBF7D0" stroke-width="1.5" />
+        <!-- Test Tube Icon -->
+        <path d="M22 14v16a3 3 0 0 0 6 0v-16z M20 14h10 M25 22h3 M25 26h2" fill="none" stroke="#16A34A" stroke-width="1.5" stroke-linecap="round" />
+        <text x="25" y="60" class="badge-label">QA / Test</text>
+      </g>
+
+      <!-- 2. Security Badge -->
+      <g transform="translate(85, 45)">
+        <circle cx="25" cy="25" r="22" fill="#FEF2F2" stroke="#FCA5A5" stroke-width="1.5" />
+        <!-- Padlock / Shield Icon -->
+        <rect x="17" y="22" width="16" height="12" rx="2" fill="#DC2626" />
+        <path d="M20 22v-4a5 5 0 0 1 10 0v4" fill="none" stroke="#DC2626" stroke-width="1.5" />
+        <circle cx="25" cy="28" r="2" fill="#FFFFFF" />
+        <text x="25" y="60" class="badge-label">Security</text>
+      </g>
+
+      <!-- 3. Compliance Badge -->
+      <g transform="translate(145, 45)">
+        <circle cx="25" cy="25" r="22" fill="#F0FDFA" stroke="#99F6E4" stroke-width="1.5" />
+        <!-- Scale / Balance Icon -->
+        <path d="M25 14v22 M16 18h18 M16 18l4 8h-8z M34 18l4 8h-8z" fill="none" stroke="#0D9488" stroke-width="1.5" stroke-linecap="round" />
+        <text x="25" y="60" class="badge-label">Compliance</text>
+      </g>
+
+      <!-- 4. Docs Badge -->
+      <g transform="translate(205, 45)">
+        <circle cx="25" cy="25" r="22" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.5" />
+        <!-- Document / Pencil Icon -->
+        <rect x="16" y="14" width="18" height="22" rx="2" fill="none" stroke="#475569" stroke-width="1.5" />
+        <path d="M20 20h10 M20 26h10 M20 32h6" stroke="#475569" stroke-width="1.5" stroke-linecap="round" />
+        <text x="25" y="60" class="badge-label">Docs / Spec</text>
+      </g>
+    </g>
+  </g>
+
+
+  <!-- ==================== FLOW CONNECTORS ==================== -->
+  
+  <!-- Orchestrator dispatches to Builder Sandbox (Clean, no overlays) -->
+  <path d="M 400 185 V 198 H 305 V 220" fill="none" stroke="#2563EB" stroke-width="1.5" marker-end="url(#arr-blue)" />
+  <text x="255" y="208" class="flow-label">1. BUILD GATED TASK</text>
+
+  <!-- Orchestrator dispatches to Validator Sandbox (Clean, no overlays) -->
+  <path d="M 800 185 V 198 H 895 V 220" fill="none" stroke="#2563EB" stroke-width="1.5" marker-end="url(#arr-blue)" />
+  <text x="945" y="208" class="flow-label">2. VALIDATE GATED TASK</text>
+
+  <!-- Sandbox verify connection -->
+  <path d="M 570 340 H 630" fill="none" stroke="#7C3AED" stroke-width="2" marker-end="url(#arr-purple)" />
+  <text x="600" y="330" class="flow-label" fill="#7C3AED" text-anchor="middle">3. VERIFY</text>
+
+</svg>

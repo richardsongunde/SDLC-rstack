@@ -1,0 +1,44 @@
+---
+title: "Agent 14 — Cost Estimation"
+description: "Cloud cost forecast with infrastructure costs, development effort, and ongoing maintenance projections."
+---
+
+<Info>
+  **File:** `agents/sdlc/14-cost-estimation.md` · **Model:** Sonnet · **Tools:** Bash, Read, Write
+</Info>
+
+## Purpose
+
+The cost estimation agent produces realistic cost forecasts grounded in current published pricing. Every estimate states its assumptions and variance range explicitly.
+
+## Core principle
+
+> An estimate without stated assumptions is fiction. State the assumption, state the range, state what would change the number by more than 50%.
+
+## What it estimates
+
+- **Infrastructure costs** — compute, database, storage, bandwidth, CDN
+- **Development effort** — hours/days per pipeline stage
+- **Ongoing maintenance** — monthly operational cost projection
+- **Scale scenarios** — 10x user growth cost impact
+
+## Outputs
+
+```json
+// .rstack/runs/<run_id>/specs/cost_estimate.json
+{
+  "assumptions": {
+    "monthly_active_users": 1000,
+    "region": "us-east-1",
+    "uptime_sla": "99.9%"
+  },
+  "monthly_infrastructure": {
+    "compute": "$45 (2x t3.small)",
+    "database": "$30 (db.t3.micro RDS PostgreSQL)",
+    "storage": "$5 (100GB S3)",
+    "total": "$80/month"
+  },
+  "variance": "Costs increase 4-6x at 10,000 MAU",
+  "warnings": ["If media uploads are enabled, S3 + CDN costs increase significantly"]
+}
+```

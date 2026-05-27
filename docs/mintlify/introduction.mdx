@@ -1,0 +1,63 @@
+---
+title: "RStack SDLC"
+description: "A framework-independent, governed AI software-delivery harness for coding agents."
+---
+
+<img
+  className="block dark:hidden"
+  src="/assets/hero-light.png"
+  alt="RStack SDLC"
+/>
+
+## What is RStack?
+
+**RStack SDLC** is a portable AI-SDLC framework developed by Richardson Gunde. It gives AI coding agents a repeatable, governed software delivery lifecycle instead of ad-hoc prompting.
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="bolt" href="/quickstart">
+    Get RStack running in under 5 minutes.
+  </Card>
+  <Card title="System Architecture" icon="sitemap" href="/architecture">
+    Deep-dive into the 7-layer governed runtime and execution pipeline.
+  </Card>
+  <Card title="Core Concepts" icon="cube" href="/concepts/overview">
+    Understand the Orchestrator → Builder → Validator model.
+  </Card>
+  <Card title="SDLC Pipeline" icon="arrow-right-arrow-left" href="/sdlc-pipeline/overview">
+    Explore all 14 pipeline agents from environment to cost estimation.
+  </Card>
+  <Card title="Adapters" icon="plug" href="/adapters/pi">
+    Install RStack in Pi, Claude Code, Codex, Gemini, and more.
+  </Card>
+</CardGroup>
+
+## The RStack lifecycle
+
+```
+clarify → plan → spec → approve → build → validate → release-readiness → learn
+```
+
+RStack enforces this lifecycle so AI agents behave like a productive software team — not a single chatbot.
+
+## What's included
+
+| Layer | Contents |
+|---|---|
+| `agents/core/` | Orchestrator, builder, and validator team contracts |
+| `agents/sdlc/` | 14 full-lifecycle pipeline agents |
+| `agents/specialists/` | Backend, frontend, devops, QA, security, data, docs specialists |
+| `skills/` | 156 reusable workflow instructions |
+| `prompts/` | 36 prompt templates and command-style workflows |
+| `plugins/` | 72 domain packs with manifests, agents, skills, and commands |
+| `extensions/` | Native Pi runtime adapter |
+| `.rstack/runs/` | Generated run state — specs, approvals, traceability, evidence |
+
+## Why RStack?
+
+One-shot coding agents often fail because they skip process. They code before requirements are clear, over-edit unrelated files, pass work without testing, or forget previous mistakes.
+
+RStack fixes this by making the agent follow an explicit lifecycle with contracts and validation at every stage.
+
+<Note>
+  RStack ships with a native **Pi adapter** today, but the framework is portable. The core assets are Markdown/JSON-compatible and can be used from Claude Code, Codex CLI, Gemini CLI, or any agent harness.
+</Note>

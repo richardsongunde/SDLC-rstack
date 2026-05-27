@@ -1,0 +1,171 @@
+---
+title: "Governance Model"
+description: "How RStack enforces lifecycle controls, approval gates, and evidence requirements."
+---
+
+## The governed lifecycle
+
+RStack enforces this operating model on every run:
+
+```
+clarify → plan → spec → approve → build → validate → release-readiness → memory
+```
+
+No phase can be skipped. No implementation begins without plan approval. No task is claimed DONE without evidence.
+
+## Required controls
+
+| Control | Description |
+|---|---|
+| **Plan approval gate** | No implementation before plan is approved in interactive mode |
+| **Requirements gate** | No build after requirements/architecture gates without `sdlc_approve` |
+| **Destructive action gate** | `rm -rf`, `git push`, `npm publish`, `terraform apply` are blocked unless explicitly approved |
+| **Read-only validators** | Validator agents default to read-only tools — they cannot modify files |
+| **Acceptance criteria** | Every task must have acceptance criteria before it can be built |
+| **Builder contracts** | Every builder writes `builder.json` before the task is complete |
+| **Validator contracts** | Every validator writes `validation.json` |
+| **Traceability** | `traceability.json` maps requirements → design → tasks → files → tests → evidence |
+| **No DONE without evidence** | A task is only complete when builder.json + validation.json exist |
+
+## Approval gates
+
+RStack uses `sdlc_approve` to record explicit human decisions:
+
+```text
+sdlc_approve(artifact="plan.md", status="APPROVED")
+sdlc_approve(artifact="requirements.json", status="APPROVED")
+sdlc_approve(artifact="architecture.md", status="APPROVED")
+sdlc_approve(artifact="release-readiness.json", status="APPROVED")
+sdlc_approve(artifact="destructive-action", status="APPROVED")
+```
+
+Approvals are written to `.rstack/runs/<run_id>/approvals.json` and referenced in traceability.
+
+## Protected actions
+
+RStack blocks these commands during governed runs unless a matching approval exists:
+
+<AccordionGroup>
+  <Accordion title="Shell commands">
+    ```
+    rm -rf
+    git push
+    git push --force
+    ```
+  </Accordion>
+  <Accordion title="Package publishing">
+    ```
+    npm publish
+    pip publish
+    ```
+  </Accordion>
+  <Accordion title="Infrastructure">
+    ```
+    terraform apply
+    terraform destroy
+    kubectl apply
+    kubectl delete
+    helm install
+    helm upgrade
+    helm uninstall
+    ```
+  </Accordion>
+  <Accordion title="Database">
+    ```
+    DROP TABLE
+    DELETE FROM (without WHERE)
+    TRUNCATE
+    ```
+  </Accordion>
+  <Accordion title="Secret-like write paths">
+    ```
+    .env
+    .env.*
+    id_rsa
+    id_ed25519
+    credentials.*
+    secrets.*
+    .npmrc
+    .pypirc
+    ```
+  </Accordion>
+</AccordionGroup>
+
+To allow a protected action:
+
+```text
+sdlc_approve(artifact="destructive-action", status="APPROVED")
+```
+
+Or set the environment variable:
+
+```bash
+RSTACK_ALLOW_DESTRUCTIVE=1
+```
+
+## Team roles and tool permissions
+
+| Role | Default tools | Can write? |
+|---|---|---|
+| Orchestrator | All | Yes (coordination only) |
+| Builder | read, bash, edit, write, grep, find, ls | Yes |
+| Validator | read, grep, find, ls | **No** |
+| Specialist | Role-specific | Depends on role |
+
+Validators are intentionally read-only. They review builder output, check tests, and write `validation.json` — but cannot modify source files.
+
+## Evidence requirements
+
+A task is only considered complete when all of the following exist:
+
+```text
+.rstack/runs/<run_id>/tasks/<task_id>/
+  prompt.md         ← task specification
+  builder.json      ← builder's completion contract
+  validation.json   ← validator's review contract
+```
+
+`builder.json` minimum structure:
+
+```json
+{
+  "task_id": "task_001",
+  "status": "COMPLETE",
+  "files_changed": ["src/auth.js", "tests/auth.test.js"],
+  "acceptance_criteria_met": true,
+  "notes": ""
+}
+```
+
+`validation.json` minimum structure:
+
+```json
+{
+  "task_id": "task_001",
+  "verdict": "PASS",
+  "checks": {
+    "acceptance_criteria": true,
+    "tests_pass": true,
+    "no_regressions": true,
+    "security_concerns": false
+  },
+  "notes": ""
+}
+```
+
+## Project-local overrides
+
+Teams can override or extend the default packaged assets under:
+
+```text
+.rstack/agents/
+.rstack/skills/
+.rstack/prompts/
+.rstack/plugins/
+.pi/rstack/agents/
+.pi/rstack/skills/
+.pi/rstack/prompts/
+.pi/rstack/plugins/
+```
+
+Local overrides take precedence over the package defaults, allowing teams to customize the governance model without forking the core package.

@@ -1,0 +1,110 @@
+---
+title: "Concepts Overview"
+description: "The key concepts that make RStack SDLC work."
+---
+
+## The core problem RStack solves
+
+AI coding agents fail at software delivery for predictable reasons:
+
+- They code before requirements are clear
+- They over-edit unrelated files
+- They pass work as "done" without testing
+- They forget previous mistakes and repeat them
+- They make risky actions (deploys, deletes) without asking
+
+RStack addresses all of these by giving the agent a structured operating model: an explicit lifecycle, team roles, approval gates, and evidence requirements.
+
+## The team model
+
+RStack organizes agents into three teams:
+
+```
+Orchestrator (team lead)
+├── Builder team
+│   ├── Backend specialists
+│   ├── Frontend specialists
+│   ├── DevOps specialists
+│   ├── Data specialists
+│   └── Docs specialists
+└── Validator team
+    ├── QA specialists
+    ├── Security specialists
+    ├── Architecture reviewers
+    ├── Code reviewers
+    └── Performance / accessibility reviewers
+```
+
+The **Orchestrator** routes work, manages the lifecycle, and is the only agent that communicates with the product owner (you).
+
+**Builders** implement tasks within a scoped, gated context.
+
+**Validators** review builder output with read-only tools. They cannot modify source files.
+
+## The lifecycle
+
+```
+sdlc_orchestrate → sdlc_start → sdlc_clarify → sdlc_plan → sdlc_spec
+       ↓
+sdlc_approve (requirements, architecture)
+       ↓
+sdlc_build_next → sdlc_validate → (repeat)
+       ↓
+sdlc_approve (release-readiness)
+       ↓
+sdlc_memory
+```
+
+Each phase produces durable artifacts stored under `.rstack/runs/<run_id>/`.
+
+## Asset types
+
+<CardGroup cols={2}>
+  <Card title="Agents" icon="robot" href="/concepts/orchestrator-builder-validator">
+    Markdown files that define agent roles, tools, and operating contracts.
+  </Card>
+  <Card title="Skills" icon="wrench" href="/concepts/plugins-and-skills">
+    Reusable workflow instructions that can be included in task packets.
+  </Card>
+  <Card title="Plugins" icon="puzzle-piece" href="/concepts/plugins-and-skills">
+    Domain packs bundling agents, skills, and commands for specific areas.
+  </Card>
+  <Card title="Run State" icon="database" href="/concepts/state-management">
+    Durable per-run artifacts: plan, specs, tasks, approvals, traceability, evidence.
+  </Card>
+</CardGroup>
+
+## Asset counts
+
+The RStack package currently ships:
+
+| Asset type | Count |
+|---|---|
+| Agents | 196 |
+| Skills | 156 |
+| Prompts | 36 |
+| Plugins | 72 |
+
+## Pipeline routing
+
+The orchestrator maps lifecycle tasks to the right SDLC agents:
+
+| Pipeline stage | Agents involved |
+|---|---|
+| Product clarification | `00-environment`, `01-transcript` |
+| Requirements | `02-requirements`, `04-planning`, `05-jira` |
+| Architecture | `06-architecture`, `12-security-threat-model`, `14-cost-estimation` |
+| Implementation | `07-code` |
+| Testing | `08-testing` |
+| Security review | `12-security-threat-model`, `13-compliance-checker` |
+| Documentation | `03-documentation`, `10-summary` |
+| Release readiness | `09-deployment`, `10-summary`, `11-feedback-loop` |
+
+Each generated task includes routing metadata:
+
+```json
+{
+  "pipeline_agents": ["agent.02-requirements", "agent.04-planning"],
+  "specialists": ["agent.02-requirements", "plugin.backend-development"]
+}
+```

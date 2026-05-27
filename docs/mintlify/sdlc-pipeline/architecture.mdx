@@ -1,0 +1,58 @@
+---
+title: "Agent 06 — Architecture"
+description: "Senior Solution Architect. Produces system_design.json and HLD.md covering tech stack, database schema, API contracts, and security design."
+---
+
+<Info>
+  **File:** `agents/sdlc/06-architecture.md` · **Model:** Opus · **Tools:** Bash, Read, Write
+</Info>
+
+## Purpose
+
+The architecture agent makes and documents every technical decision needed to build the system. Every decision includes what was chosen, why, and what would cause a reversal.
+
+## Core principle
+
+> Every architectural decision is a trade-off. Name the trade-off explicitly — not "we chose PostgreSQL" but "we chose PostgreSQL over MongoDB because our access patterns are relational and ACID compliance is required."
+
+## What it does
+
+1. Reads `jira_tickets.json` and `requirement_spec.json`
+2. Selects tech stack with documented rationale
+3. Designs database schema
+4. Defines API contracts
+5. Plans service architecture
+6. Includes security design considerations
+7. Produces `system_design.json` and `HLD.md`
+
+## Outputs
+
+```
+.rstack/runs/<run_id>/specs/
+  architecture.md        ← Human-readable HLD
+  system_design.json     ← Machine-readable design spec
+```
+
+`system_design.json` includes:
+
+```json
+{
+  "tech_stack": {
+    "runtime": "Node.js 20",
+    "framework": "Fastify",
+    "database": "PostgreSQL 16",
+    "rationale": "Relational model required; ACID for financial transactions"
+  },
+  "api_contracts": [...],
+  "database_schema": [...],
+  "security_design": {
+    "auth": "JWT with 24h expiry + refresh tokens in httpOnly cookies",
+    "encryption_at_rest": true,
+    "encryption_in_transit": "TLS 1.3"
+  }
+}
+```
+
+<Warning>
+  Architecture requires explicit `sdlc_approve` before implementation can begin.
+</Warning>

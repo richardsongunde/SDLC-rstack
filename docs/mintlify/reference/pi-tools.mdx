@@ -1,0 +1,232 @@
+---
+title: "Pi Tools Reference"
+description: "Complete reference for all native Pi SDLC tools exposed by the RStack extension."
+---
+
+## Tool surface
+
+The RStack Pi extension registers these tools on `session_start`. They are available in any Pi session where RStack is installed.
+
+---
+
+### `sdlc_orchestrate`
+
+Load the RStack orchestrator, builder, and validator operating instructions for a goal.
+
+**Call first** — before `sdlc_start`. Injects the core agent instructions into the session.
+
+```text
+sdlc_orchestrate(goal="Build a production-ready REST API with auth and tests")
+```
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `goal` | string | ✅ | The high-level delivery goal |
+
+---
+
+### `sdlc_start`
+
+Create a new run directory under `.rstack/runs/<run_id>/` and initialize run state.
+
+```text
+sdlc_start(goal="Build a production-ready REST API with auth and tests")
+```
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `goal` | string | ✅ | The delivery goal (same as `sdlc_orchestrate`) |
+
+**Creates:**
+```text
+.rstack/runs/<run_id>/
+  manifest.json
+  context.md
+```
+
+---
+
+### `sdlc_clarify`
+
+Ask or capture product-owner answers before planning. Called when the goal has ambiguities.
+
+```text
+sdlc_clarify()
+```
+
+RStack surfaces `open_questions` from the transcript and waits for your answers before proceeding to `sdlc_plan`.
+
+---
+
+### `sdlc_plan`
+
+Generate the delivery plan, task breakdown, spec artifacts, and traceability.
+
+```text
+sdlc_plan()
+```
+
+**Creates:**
+```text
+.rstack/runs/<run_id>/
+  plan.md
+  tasks.json
+  traceability.json
+  specs/
+    product-brief.md
+    requirements.json
+    architecture.md
+```
+
+<Warning>
+  `sdlc_plan` requires approval before `sdlc_build_next` can be called.
+</Warning>
+
+---
+
+### `sdlc_spec`
+
+Read or update governed spec artifacts under `.rstack/runs/<run_id>/specs/`.
+
+```text
+sdlc_spec(artifact="requirements.json")
+sdlc_spec(artifact="architecture.md", update="Add Redis caching layer for session storage")
+```
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `artifact` | string | ✅ | Spec file name (e.g. `architecture.md`) |
+| `update` | string | — | Instruction for updating the spec |
+
+---
+
+### `sdlc_approve`
+
+Record a human approval or rejection gate. Required before build and release phases.
+
+```text
+sdlc_approve(artifact="plan.md", status="APPROVED")
+sdlc_approve(artifact="requirements.json", status="APPROVED")
+sdlc_approve(artifact="architecture.md", status="APPROVED")
+sdlc_approve(artifact="release-readiness.json", status="APPROVED")
+sdlc_approve(artifact="destructive-action", status="APPROVED")
+```
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `artifact` | string | ✅ | The artifact or action being approved |
+| `status` | `"APPROVED"` \| `"REJECTED"` | ✅ | Your decision |
+| `notes` | string | — | Optional notes or conditions |
+
+Writes to `.rstack/runs/<run_id>/approvals.json`.
+
+---
+
+### `sdlc_agents`
+
+List all available agents, skills, and plugins for the current run.
+
+```text
+sdlc_agents()
+sdlc_agents(domain="backend")
+sdlc_agents(kind="specialist")
+```
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `domain` | string | — | Filter by domain (e.g. `backend`, `frontend`) |
+| `kind` | string | — | Filter by kind (`core`, `sdlc`, `specialist`, `plugin`) |
+
+---
+
+### `sdlc_delegate`
+
+Spawn an isolated Pi worker agent for a bounded task. Validators default to read-only tools.
+
+```text
+sdlc_delegate(role="builder", task="Implement JWT auth middleware")
+sdlc_delegate(role="validator", task="Review auth implementation for security issues")
+sdlc_delegate(role="researcher", task="Find best practices for refresh token storage")
+```
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `role` | `"builder"` \| `"validator"` \| `"researcher"` \| `"reviewer"` | ✅ | Worker role |
+| `task` | string | ✅ | Task description |
+| `tools` | string[] | — | Override default tool set |
+| `context` | string | — | Additional context to pass to the worker |
+
+---
+
+### `sdlc_build_next`
+
+Prepare the next pending task packet with core, SDLC, specialist, skill, and plugin context. Requires plan approval.
+
+```text
+sdlc_build_next()
+sdlc_build_next(task_id="task_003")
+```
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `task_id` | string | — | Target a specific task (default: next pending) |
+
+Returns a task packet ready for execution. After completing the task, write `builder.json`.
+
+---
+
+### `sdlc_validate`
+
+Run the validator team against the most recently completed builder task. Writes `validation.json`.
+
+```text
+sdlc_validate()
+sdlc_validate(task_id="task_003")
+```
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `task_id` | string | — | Target a specific task (default: most recent) |
+
+---
+
+### `sdlc_status`
+
+Show run status, task progress, missing approvals, registry counts, and next recommended action.
+
+```text
+sdlc_status()
+```
+
+**Example output:**
+```
+Run: run_20240525_001
+Goal: Build a production-ready REST API
+
+Tasks:   6/10 complete (4 pending)
+Pending approvals: release-readiness.json
+
+Registry: 196 agents · 156 skills · 72 plugins
+Next: sdlc_build_next() → task_007 (Add rate limiting middleware)
+```
+
+---
+
+### `sdlc_memory`
+
+Search or append project learnings for future runs.
+
+```text
+# Search existing learnings
+sdlc_memory(search="JWT refresh token")
+
+# Append a new learning
+sdlc_memory(append="Always validate tenant_id in JWT before any data access")
+```
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `search` | string | — | Search query for existing learnings |
+| `append` | string | — | New learning to save |
+
+Writes to `.rstack/memory/learnings.jsonl`.

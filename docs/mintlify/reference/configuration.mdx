@@ -1,0 +1,155 @@
+---
+title: "Configuration"
+description: "Environment variables, project overrides, and registry configuration."
+---
+
+## Environment variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `RSTACK_HOME` | — | Path to RStack asset root. Required for asset-only adapters. |
+| `RSTACK_RUN_DIR` | `.rstack/runs` | Override the run state directory |
+| `RSTACK_ALLOW_DESTRUCTIVE` | `0` | Set to `1` to bypass destructive action gates |
+| `RSTACK_LOG_LEVEL` | `info` | Log verbosity: `debug`, `info`, `warn`, `error` |
+| `RSTACK_MODEL_OPUS` | `claude-opus-4-5` | Model to use for Opus-tier agents (architecture, code, security) |
+| `RSTACK_MODEL_SONNET` | `claude-sonnet-4-5` | Model to use for Sonnet-tier agents |
+
+---
+
+## Project layout
+
+```text
+your-project/
+  .rstack/                    ← RStack state root
+    agents/                   ← Project-local agent overrides
+    skills/                   ← Project-local skill overrides
+    plugins/                  ← Project-local plugin overrides
+    prompts/                  ← Project-local prompt overrides
+    memory/
+      learnings.jsonl         ← Cross-run learnings
+    registry/
+      registry.json
+      agents.json
+      skills.json
+      plugins.json
+      routing.json
+    runs/
+      <run_id>/               ← One directory per run
+        manifest.json
+        context.md
+        plan.md
+        tasks.json
+        approvals.json
+        traceability.json
+        events.jsonl
+        specs/
+        tasks/
+```
+
+---
+
+## Project-local overrides
+
+Place overrides in `.rstack/` or `.pi/rstack/`. Local files take precedence over the package defaults.
+
+**Adding a custom agent:**
+```bash
+mkdir -p .rstack/agents/sdlc
+cat > .rstack/agents/sdlc/15-custom-stage.md << 'EOF'
+---
+name: 15-custom-stage
+description: My custom SDLC stage (sdlc)
+model: sonnet
+tools:
+  - Bash
+  - Read
+  - Write
+---
+# Custom Stage
+...
+EOF
+```
+
+**Adding a custom skill:**
+```bash
+mkdir -p .rstack/skills/my-skill
+cat > .rstack/skills/my-skill/SKILL.md << 'EOF'
+# My Custom Skill
+Instructions for the agent...
+EOF
+```
+
+**Adding a custom plugin:**
+```bash
+mkdir -p .rstack/plugins/my-domain/{agents,skills}
+cat > .rstack/plugins/my-domain/plugin.json << 'EOF'
+{
+  "id": "my-domain",
+  "name": "My Domain Pack",
+  "version": "1.0.0",
+  "domain": ["my-domain"],
+  "agents": ["agents/specialist.md"],
+  "skills": ["skills/my-skill/SKILL.md"]
+}
+EOF
+```
+
+---
+
+## Agent frontmatter schema
+
+All agent files follow this frontmatter schema:
+
+```yaml
+---
+name: agent-name              # Required. Unique across all agents.
+description: |                # Required. Used for registry and routing.
+  One-line description (role)
+model: sonnet                 # Required. "sonnet", "opus", or "haiku"
+tools:                        # Required. List of permitted tools.
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - Grep
+color: cyan                   # Optional. Display color in Pi UI.
+owner: Your Name              # Optional. Attribution.
+---
+```
+
+Valid `model` values:
+- `haiku` — Fast, lightweight tasks
+- `sonnet` — Standard tasks (most pipeline agents)
+- `opus` — Complex tasks: architecture, code generation, security
+
+Valid `tools` values:
+- `Bash`, `Read`, `Write`, `Edit`, `Grep`, `Find`, `LS`
+- Validators should only have: `Read`, `Grep`, `Find`, `LS`
+
+---
+
+## Registry refresh
+
+After adding local overrides, refresh the registry:
+
+```bash
+rstack-agents validate
+```
+
+This re-scans all asset directories (package + project-local), rebuilds `registry/*.json`, and reports any errors.
+
+---
+
+## Adapter roadmap
+
+Planned native adapters (not yet available):
+
+| Adapter | Status | Description |
+|---|---|---|
+| `adapters/mcp` | Planned | Expose RStack tools to any MCP-compatible client |
+| `adapters/claude-code` | Partial | Asset copy + CLAUDE.md bootstrap |
+| `adapters/codex` | Partial | AGENTS.md bootstrap |
+| `adapters/gemini` | Partial | GEMINI.md bootstrap |
+| `adapters/sdk` | Planned | Node/Python library for custom harnesses |
+
+Track progress and contribute at [github.com/richard-devbot/SDLC-rstack](https://github.com/richard-devbot/SDLC-rstack).

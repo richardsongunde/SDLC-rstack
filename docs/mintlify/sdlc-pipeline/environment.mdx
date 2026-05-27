@@ -1,0 +1,54 @@
+---
+title: "Agent 00 — Environment"
+description: "Discovers installed tools, checks environment variables, and produces environment_report.json."
+---
+
+<Info>
+  **File:** `agents/sdlc/00-environment.md` · **Model:** Sonnet · **Tools:** Bash, Read, Write
+</Info>
+
+## Purpose
+
+Agent Zero is the SDLC entry point. It runs before any planning or implementation decision is made. It produces an honest snapshot of exactly what the current machine has — so every downstream agent can plan accordingly.
+
+## What it does
+
+1. Detects installed tools (Node, Python, Docker, databases, cloud CLIs, etc.)
+2. Checks required environment variables
+3. Installs free fallback alternatives for missing tools
+4. Produces `environment_report.json`
+
+## Why it matters
+
+Every downstream agent's decisions flow from this report:
+- Architecture choices depend on what runtimes are available
+- Test runner selection depends on what testing tools exist
+- Deployment strategy depends on whether Docker/Kubernetes are present
+
+An honest `DONE_WITH_CONCERNS` beats a blocked pipeline every time.
+
+## Outputs
+
+```json
+// .rstack/runs/<run_id>/environment_report.json
+{
+  "node_version": "20.11.0",
+  "npm_version": "10.2.4",
+  "docker_available": true,
+  "docker_version": "24.0.6",
+  "git_version": "2.43.0",
+  "python_version": "3.11.7",
+  "missing_tools": [],
+  "fallbacks_installed": [],
+  "env_vars_present": ["DATABASE_URL", "PORT"],
+  "env_vars_missing": ["AWS_ACCESS_KEY_ID"],
+  "warnings": ["AWS credentials not found — deployment to AWS will fail"]
+}
+```
+
+## Run order
+
+Always run first:
+```
+00-environment → 01-transcript → 02-requirements → ...
+```

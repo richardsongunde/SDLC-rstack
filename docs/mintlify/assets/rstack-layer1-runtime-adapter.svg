@@ -1,0 +1,234 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1420 620" width="100%" height="100%">
+  <defs>
+    <!-- Styles -->
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap');
+      text {
+        font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      }
+      .main-title { font-weight: 700; font-size: 20px; fill: #0F172A; }
+      .main-subtitle { font-weight: 500; font-size: 12px; fill: #64748B; }
+      .section-title { font-weight: 700; font-size: 13px; fill: #1E293B; }
+      .card-title { font-weight: 700; font-size: 12.5px; fill: #0F172A; }
+      .card-subtitle { font-weight: 500; font-size: 10px; fill: #64748B; }
+      .bullet-text { font-weight: 400; font-size: 10px; fill: #334155; }
+      .code-text { font-family: monospace; font-size: 9.5px; fill: #0F172A; }
+      
+      /* Dashboard and Terminal Styles */
+      .dash-label { font-weight: 600; font-size: 9px; fill: #64748B; }
+      .dash-value { font-weight: 700; font-size: 15px; fill: #1E293B; }
+      .term-cmd { font-family: monospace; font-weight: 600; font-size: 11px; fill: #38BDF8; }
+      .term-prompt { font-family: monospace; font-weight: 500; font-size: 10.5px; fill: #FBBF24; }
+      .term-out { font-family: monospace; font-weight: 400; font-size: 10.5px; fill: #E2E8F0; }
+    </style>
+
+    <!-- Filters -->
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#0F172A" flood-opacity="0.04" />
+    </filter>
+    <filter id="card-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#0F172A" flood-opacity="0.04" />
+    </filter>
+
+    <!-- Gradients -->
+    <linearGradient id="blue-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F5F9FF" />
+      <stop offset="100%" stop-color="#E1EFFE" />
+    </linearGradient>
+    <linearGradient id="orange-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFAF5" />
+      <stop offset="100%" stop-color="#FFF3E0" />
+    </linearGradient>
+    <linearGradient id="teal-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F0FDF4" />
+      <stop offset="100%" stop-color="#DCFCE7" />
+    </linearGradient>
+  </defs>
+
+  <!-- Canvas Background -->
+  <rect width="100%" height="100%" fill="#F8FAFC" />
+
+  <!-- Header -->
+  <g transform="translate(45, 40)">
+    <text x="0" y="0" class="main-title">Layer 1 Detailed Zoom: Intake &amp; Alignment Pipeline</text>
+    <text x="0" y="18" class="main-subtitle">Expanding the 3 core pillars of RStack's business alignment: Goal Clarification, Budget Estimation, and Specs-to-Code Traceability Mapping</text>
+  </g>
+
+  <!-- ==================== MAIN BROWSER WINDOW ==================== -->
+  <g transform="translate(25, 80)" filter="url(#shadow)">
+    <!-- Browser Frame -->
+    <rect width="1370" height="510" rx="14" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" />
+    <!-- Browser Header -->
+    <path d="M 0 14 A 14 14 0 0 1 14 0 L 1356 0 A 14 14 0 0 1 1370 14 L 1370 36 L 0 36 Z" fill="#F1F5F9" stroke="#E2E8F0" stroke-width="1" />
+    <!-- Window Dots -->
+    <circle cx="20" cy="18" r="6" fill="#EF4444" />
+    <circle cx="38" cy="18" r="6" fill="#F59E0B" />
+    <circle cx="56" cy="18" r="6" fill="#10B981" />
+    <!-- URL Bar -->
+    <rect x="90" y="8" width="1190" height="20" rx="6" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" />
+    <text x="105" y="22" font-size="10px" fill="#64748B" font-family="monospace">rstack.sdlc.dev/dashboard/intake-and-alignment-details</text>
+
+    <!-- ==================== THE 3 PILLARS IN DETAIL ==================== -->
+
+    <!-- COLUMN 1: GOAL CLARIFICATION (Intake Dialog) -->
+    <g transform="translate(25, 56)">
+      <!-- Panel Card -->
+      <rect width="420" height="430" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" filter="url(#card-shadow)" />
+      <rect width="420" height="34" rx="12" fill="url(#blue-grad)" />
+      <rect y="24" width="420" height="10" fill="url(#blue-grad)" />
+      <text x="210" y="21" class="section-title" fill="#1E40AF" text-anchor="middle">Pillar 1: Goal &amp; Intent Clarification</text>
+
+      <!-- Chat Dialogue Mockup (Dark Mode Terminal Style) -->
+      <g transform="translate(20, 55)">
+        <rect width="380" height="150" rx="8" fill="#0F172A" stroke="#1E293B" stroke-width="1.5" />
+        <text x="15" y="25" class="term-cmd">$ sdlc_clarify dialog</text>
+        <text x="15" y="45" class="term-prompt">[Q1] Who is the target user and what is the core job?</text>
+        <text x="15" y="60" class="term-out">&gt; Engineering leaders requiring secure developer APIs.</text>
+        <text x="15" y="80" class="term-prompt">[Q2] What tech stack or hosting conventions must be met?</text>
+        <text x="15" y="95" class="term-out">&gt; Node.js, Express, and standard npm workspaces.</text>
+        <text x="15" y="115" class="term-prompt">[Q3] What should be explicitly out of scope?</text>
+        <text x="15" y="130" class="term-out">&gt; Deploying to legacy cloud services.</text>
+      </g>
+
+      <!-- Spec Export Cards -->
+      <g transform="translate(20, 220)">
+        <rect width="380" height="190" rx="8" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1.2" />
+        <circle cx="25" cy="25" r="11" fill="#EFF6FF" />
+        <path d="M22 20h6v10h-6z M24 23h2 M24 27h2" fill="none" stroke="#2563EB" stroke-width="1.5" />
+        <text x="44" y="23" class="card-title">Freezing Context Specs</text>
+        <text x="44" y="35" class="card-subtitle">Exporting to runs/context.md</text>
+        <rect x="10" y="46" width="360" height="1" fill="#E2E8F0" />
+        
+        <text x="15" y="68" class="bullet-text">• Preempts AI guesses: Context is structurally frozen by the PO</text>
+        <text x="15" y="86" class="bullet-text">• Eliminates requirement drift: Enforced at every build stage</text>
+        <text x="15" y="104" class="bullet-text">• Custom constraints checklist is loaded in orchestrator prompt</text>
+        <text x="15" y="122" class="bullet-text" style="font-weight:600;">Outputs to Run Directory:</text>
+        <text x="15" y="140" class="code-text">.rstack/runs/&lt;run_id&gt;/context.md  ➔ Goal intents specifications</text>
+        <text x="15" y="154" class="code-text">.rstack/runs/&lt;run_id&gt;/manifest.json ➔ Run metadata and status</text>
+      </g>
+    </g>
+
+
+    <!-- COLUMN 2: BUDGET & COST BOUNDS -->
+    <g transform="translate(470, 56)">
+      <rect width="420" height="430" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" filter="url(#card-shadow)" />
+      <rect width="420" height="34" rx="12" fill="url(#orange-grad)" />
+      <rect y="24" width="420" height="10" fill="url(#orange-grad)" />
+      <text x="210" y="21" class="section-title" fill="#C2410C" text-anchor="middle">Pillar 2: Budgeting &amp; Cost Bounds</text>
+
+      <!-- Cost Dashboard Mockup Panel -->
+      <g transform="translate(20, 55)">
+        <rect width="380" height="150" rx="8" fill="#FFF7ED" stroke="#FDBA74" stroke-width="1.2" />
+        
+        <text x="18" y="22" class="dash-label" fill="#B45309">PROJECTED COMPUTE TOKEN BUDGET</text>
+        <text x="18" y="42" class="dash-value" fill="#7C2D12">$0.14 / $5.00 limit</text>
+
+        <!-- Progress bar -->
+        <rect x="18" y="56" width="344" height="8" rx="4" fill="#FED7AA" />
+        <rect x="18" y="56" width="42" height="8" rx="4" fill="#EA580C" />
+        
+        <!-- Live Counters -->
+        <g transform="translate(18, 80)">
+          <rect width="105" height="50" rx="6" fill="#FFFFFF" stroke="#FED7AA" stroke-width="1" />
+          <text x="10" y="16" font-size="8px" fill="#7C2D12" style="font-weight:600;">ACTIVE LOOP SIZE</text>
+          <text x="10" y="32" font-size="11.5px" fill="#EA580C" style="font-weight:700;">11 Messages</text>
+          <text x="10" y="42" font-size="7.5px" fill="#9A3412">Limit max: 25</text>
+        </g>
+
+        <g transform="translate(138, 80)">
+          <rect width="105" height="50" rx="6" fill="#FFFFFF" stroke="#FED7AA" stroke-width="1" />
+          <text x="10" y="16" font-size="8px" fill="#7C2D12" style="font-weight:600;">TASK MODEL CALLS</text>
+          <text x="10" y="32" font-size="11.5px" fill="#EA580C" style="font-weight:700;">22 calls</text>
+          <text x="10" y="42" font-size="7.5px" fill="#9A3412">Limit max: 40</text>
+        </g>
+
+        <g transform="translate(258, 80)">
+          <rect width="104" height="50" rx="6" fill="#FFFFFF" stroke="#FED7AA" stroke-width="1" />
+          <text x="10" y="16" font-size="8px" fill="#7C2D12" style="font-weight:600;">MAX RUN ATTEMPTS</text>
+          <text x="10" y="32" font-size="11.5px" fill="#EA580C" style="font-weight:700;">1 / 2 attempts</text>
+          <text x="10" y="42" font-size="7.5px" fill="#9A3412">Strict failure bounds</text>
+        </g>
+      </g>
+
+      <!-- Cost Control Rules Card -->
+      <g transform="translate(20, 220)">
+        <rect width="380" height="190" rx="8" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1.2" />
+        <circle cx="25" cy="25" r="11" fill="#FFF7ED" />
+        <path d="M20 25h10 M25 20v10" fill="none" stroke="#EA580C" stroke-width="1.5" />
+        <text x="44" y="23" class="card-title">Token Safeguards</text>
+        <text x="44" y="35" class="card-subtitle">Loop prevention and spend caps</text>
+        <rect x="10" y="46" width="360" height="1" fill="#E2E8F0" />
+        
+        <text x="15" y="68" class="bullet-text">• Pre-computes estimated computational costs across all 15 stages</text>
+        <text x="15" y="86" class="bullet-text">• Enforces guardrail.js max limits directly at the harness core level</text>
+        <text x="15" y="104" class="bullet-text">• Stops recursive token loops before expensive API bills trigger</text>
+        <text x="15" y="122" class="bullet-text">• Restricts maximum model context sizes &lt; 9000 characters per task</text>
+        <text x="15" y="140" class="bullet-text">• Broadcasts instant Slack warning alerts when loop sizes cross 70%</text>
+      </g>
+    </g>
+
+
+    <!-- COLUMN 3: specs TRACEABILITY & MAPPING -->
+    <g transform="translate(915, 56)">
+      <rect width="430" height="430" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" filter="url(#shadow)" />
+      <rect width="430" height="34" rx="12" fill="url(#teal-grad)" />
+      <rect y="24" width="430" height="10" fill="url(#teal-grad)" />
+      <text x="215" y="21" class="section-title" fill="#065F46" text-anchor="middle">Pillar 3: Continuous Traceability Map</text>
+
+      <!-- Miniature Trace Flow Chart inside Box -->
+      <g transform="translate(20, 55)">
+        <rect width="390" height="150" rx="8" fill="#F0FDF4" stroke="#86EFAC" stroke-width="1.2" />
+        
+        <text x="15" y="22" font-size="9px" fill="#166534" style="font-weight:700;">SPEC-TO-CODE TRACE MAPPING ENGINE</text>
+
+        <!-- Trace flowchart nodes -->
+        <g transform="translate(15, 40)">
+          <!-- Node 1: Specs -->
+          <rect width="70" height="30" rx="4" fill="#FFFFFF" stroke="#86EFAC" stroke-width="1" />
+          <text x="35" y="18" font-size="8.5px" font-weight="700" fill="#14532D" text-anchor="middle">1. business spec</text>
+          <path d="M 70 15 H 90" fill="none" stroke="#16A34A" stroke-width="1.2" marker-end="url(#arr-green)" />
+
+          <!-- Node 2: Design -->
+          <rect x="90" y="0" width="70" height="30" rx="4" fill="#FFFFFF" stroke="#86EFAC" stroke-width="1" />
+          <text x="125" y="18" font-size="8.5px" font-weight="700" fill="#14532D" text-anchor="middle">2. system design</text>
+          <path d="M 160 15 H 180" fill="none" stroke="#16A34A" stroke-width="1.2" marker-end="url(#arr-green)" />
+
+          <!-- Node 3: Task -->
+          <rect x="180" y="0" width="60" height="30" rx="4" fill="#FFFFFF" stroke="#86EFAC" stroke-width="1" />
+          <text x="210" y="18" font-size="8.5px" font-weight="700" fill="#14532D" text-anchor="middle">3. active task</text>
+          <path d="M 240 15 H 260" fill="none" stroke="#16A34A" stroke-width="1.2" marker-end="url(#arr-green)" />
+
+          <!-- Node 4: Code files -->
+          <rect x="260" y="0" width="65" height="30" rx="4" fill="#FFFFFF" stroke="#86EFAC" stroke-width="1" />
+          <text x="292" y="18" font-size="8.5px" font-weight="700" fill="#14532D" text-anchor="middle">4. modified files</text>
+          
+          <!-- Verticals & return to evidence -->
+          <path d="M 292 30 V 55 H 125 V 65" fill="none" stroke="#16A34A" stroke-width="1.2" stroke-dasharray="3 1" />
+          
+          <!-- Node 5: Evidence Ledger (bottom center) -->
+          <rect x="65" y="65" width="120" height="34" rx="4" fill="#FFFFFF" stroke="#10B981" stroke-width="1.5" />
+          <text x="125" y="85" font-size="9px" font-weight="700" fill="#15803D" text-anchor="middle">5. evidence.jsonl Ledger</text>
+        </g>
+      </g>
+
+      <!-- Spec mapping engine details -->
+      <g transform="translate(20, 220)">
+        <rect width="390" height="190" rx="8" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1.2" />
+        <circle cx="25" cy="25" r="11" fill="#F0FDFA" />
+        <path d="M22 28a3 3 0 0 1 3-3 M28 34a3 3 0 0 1-3 3 M24 24l4 4" stroke="#0D9488" stroke-width="1.5" />
+        <text x="44" y="23" class="card-title">Traceability mapping</text>
+        <text x="44" y="35" class="card-subtitle">Immuring the run audit ledger</text>
+        <rect x="10" y="46" width="370" height="1" fill="#E2E8F0" />
+        
+        <text x="15" y="68" class="bullet-text">• Maps business requirement IDs directly to task files on disk</text>
+        <text x="15" y="86" class="bullet-text">• Writes traceability.json linking specifications ➔ code ➔ test runs</text>
+        <text x="15" y="104" class="bullet-text">• Appends structured verification log entries to evidence.jsonl ledger</text>
+        <text x="15" y="120" class="bullet-text" style="font-weight:600;">Outputs for compliance auditing:</text>
+        <text x="15" y="138" class="code-text">.rstack/runs/&lt;run_id&gt;/traceability.json  ➔ Spec to code linkage</text>
+        <text x="15" y="152" class="code-text">.rstack/runs/&lt;run_id&gt;/evidence.jsonl     ➔ Immutable validation proof</text>
+      </g>
+    </g>
+
+  </g>
+
+</svg>

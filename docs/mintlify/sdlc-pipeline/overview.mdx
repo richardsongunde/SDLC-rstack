@@ -1,0 +1,66 @@
+---
+title: "Pipeline Overview"
+description: "The 14-agent SDLC pipeline from environment discovery to cost estimation."
+---
+
+## The complete pipeline
+
+RStack ships 14 SDLC pipeline agents that cover the full software delivery lifecycle:
+
+| # | Agent file | Stage |
+|---|---|---|
+| 00 | `agents/sdlc/00-environment.md` | Environment discovery |
+| 01 | `agents/sdlc/01-transcript.md` | Transcript processing |
+| 02 | `agents/sdlc/02-requirements.md` | Requirements extraction |
+| 03 | `agents/sdlc/03-documentation.md` | Documentation writing |
+| 04 | `agents/sdlc/04-planning.md` | Sprint planning |
+| 05 | `agents/sdlc/05-jira.md` | Ticketing / Jira |
+| 06 | `agents/sdlc/06-architecture.md` | Architecture design |
+| 07 | `agents/sdlc/07-code.md` | Code generation |
+| 08 | `agents/sdlc/08-testing.md` | Test generation |
+| 09 | `agents/sdlc/09-deployment.md` | Deployment pipelines |
+| 10 | `agents/sdlc/10-summary.md` | Summary / handoff |
+| 11 | `agents/sdlc/11-feedback-loop.md` | Feedback and retrospectives |
+| 12 | `agents/sdlc/12-security-threat-model.md` | Security threat modeling |
+| 13 | `agents/sdlc/13-compliance-checker.md` | Compliance checking |
+| 14 | `agents/sdlc/14-cost-estimation.md` | Cloud cost estimation |
+
+## Pipeline routing map
+
+```text
+Product clarification  →  00-environment, 01-transcript
+Requirements           →  02-requirements, 04-planning, 05-jira
+Architecture           →  06-architecture, 12-security-threat-model, 14-cost-estimation
+Implementation         →  07-code
+Testing                →  08-testing
+Security review        →  12-security-threat-model, 13-compliance-checker
+Documentation          →  03-documentation, 10-summary
+Release readiness      →  09-deployment, 10-summary, 11-feedback-loop
+```
+
+## How agents are invoked
+
+Agents are not invoked directly — the orchestrator selects them based on the current lifecycle stage and packages them into task packets.
+
+In **Pi native mode**, the orchestrator uses `sdlc_build_next` to assemble the right agents automatically.
+
+In **asset-only mode**, you can reference agents by path in your prompt:
+
+```text
+Use agents/sdlc/06-architecture.md to design the system architecture.
+Include agents/sdlc/12-security-threat-model.md in the review.
+```
+
+## Adding to the pipeline
+
+Custom pipeline stages can be added by creating agent files and registering them in the routing config:
+
+```bash
+# Create a custom pipeline agent
+touch agents/sdlc/15-my-custom-stage.md
+
+# Re-validate to update the registry
+rstack-agents validate
+```
+
+Then reference it in your custom `.rstack/plugins/` or override `routing.json`.

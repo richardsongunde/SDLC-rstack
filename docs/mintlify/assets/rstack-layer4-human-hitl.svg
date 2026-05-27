@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 480" width="100%" height="100%">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap');
+      text { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+      .title { font-weight: 700; font-size: 18px; fill: #0F172A; text-anchor: middle; }
+      .section-title { font-weight: 700; font-size: 13px; fill: #1E293B; }
+      .card-title { font-weight: 600; font-size: 12px; fill: #0F172A; }
+      .card-subtitle { font-weight: 500; font-size: 10px; fill: #64748B; }
+      .bullet-text { font-weight: 400; font-size: 9.5px; fill: #334155; }
+      .flow-label { font-weight: 600; font-size: 9.5px; fill: #475569; }
+    </style>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#0F172A" flood-opacity="0.04" />
+    </filter>
+    <linearGradient id="orange-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFAF5" />
+      <stop offset="100%" stop-color="#FFF3E0" />
+    </linearGradient>
+  </defs>
+
+  <rect width="100%" height="100%" fill="#FAFBFD" />
+  <text x="550" y="30" class="title">Layer 4: Dual Human-in-the-Loop Sign-off Architecture</text>
+
+  <!-- Box 1: Technical Validation -->
+  <g transform="translate(100, 70)">
+    <rect width="250" height="370" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" filter="url(#shadow)" />
+    <rect width="250" height="34" rx="12" fill="url(#orange-grad)" />
+    <rect y="24" width="250" height="10" fill="url(#orange-grad)" />
+    <text x="125" y="22" class="section-title" fill="#C2410C" text-anchor="middle">Technical Sign-off</text>
+    
+    <g transform="translate(15, 55)">
+      <circle cx="12" cy="15" r="8" fill="#FFF7ED" />
+      <text x="28" y="18" class="card-title">1. Code &amp; Test Audits</text>
+      <text x="28" y="30" class="card-subtitle">Engineering Validation Gates</text>
+      <text x="0" y="48" class="bullet-text" style="font-weight:600; fill:#9A3412;">Enforces Engineering Metrics:</text>
+      <text x="0" y="66" class="bullet-text">• Verifies builder code modifications diffs</text>
+      <text x="0" y="82" class="bullet-text">• Confirms unit &amp; functional test coverage</text>
+      <text x="0" y="98" class="bullet-text">• Audits code against security guidelines</text>
+      <text x="0" y="114" class="bullet-text">• Inspects dependencies &amp; package imports</text>
+      <text x="0" y="130" class="bullet-text">• Blocks task flow on test failures</text>
+    </g>
+  </g>
+
+  <!-- Flow Connector: Technical to Business Gate -->
+  <path d="M 360 250 H 420" fill="none" stroke="#EA580C" stroke-width="2" marker-end="url(#arrow-orange)" />
+  <rect x="370" y="238" width="24" height="24" rx="12" fill="#EA580C" />
+  <text x="382" y="254" style="font-weight:700; font-size:10px; fill:#FFFFFF;" text-anchor="middle">➔</text>
+  <text x="382" y="276" class="flow-label" fill="#EA580C" text-anchor="middle">Trace Match</text>
+
+  <!-- Box 2: Business Sign-off -->
+  <g transform="translate(430, 70)">
+    <rect width="250" height="370" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" filter="url(#shadow)" />
+    <rect width="250" height="34" rx="12" fill="url(#orange-grad)" />
+    <rect y="24" width="250" height="10" fill="url(#orange-grad)" />
+    <text x="125" y="22" class="section-title" fill="#C2410C" text-anchor="middle">Business Sign-off</text>
+
+    <g transform="translate(15, 55)">
+      <circle cx="12" cy="15" r="8" fill="#FFF7ED" />
+      <text x="28" y="18" class="card-title">2. Value &amp; Budget Gates</text>
+      <text x="28" y="30" class="card-subtitle">Product &amp; Governance Gates</text>
+      <text x="0" y="48" class="bullet-text" style="font-weight:600; fill:#9A3412;">Enforces Business Metrics:</text>
+      <text x="0" y="66" class="bullet-text">• Asserts specs requirement compliance</text>
+      <text x="0" y="82" class="bullet-text">• Validates total project token/budget limits</text>
+      <text x="0" y="98" class="bullet-text">• Reviews compliance &amp; PII regulations</text>
+      <text x="0" y="114" class="bullet-text">• Assures user experience match targets</text>
+      <text x="0" y="130" class="bullet-text">• Grants final release authorization</text>
+    </g>
+  </g>
+
+  <!-- Flow Connector: Business Gate to Release -->
+  <path d="M 690 250 H 770" fill="none" stroke="#EA580C" stroke-width="2" marker-end="url(#arrow-orange)" />
+  <rect x="710" y="238" width="24" height="24" rx="12" fill="#16A34A" />
+  <text x="722" y="254" style="font-weight:700; font-size:10px; fill:#FFFFFF;" text-anchor="middle">✓</text>
+  <text x="722" y="276" class="flow-label" fill="#16A34A" text-anchor="middle">Approved</text>
+
+  <!-- Box 3: Gated Release State -->
+  <g transform="translate(780, 70)">
+    <rect width="220" height="370" rx="12" fill="#F0FDF4" stroke="#86EFAC" stroke-width="1.2" filter="url(#shadow)" />
+    <rect width="220" height="34" rx="12" fill="#DCFCE7" />
+    <rect y="24" width="220" height="10" fill="#DCFCE7" />
+    <text x="110" y="22" class="section-title" fill="#14532D" text-anchor="middle">Release Authorization</text>
+
+    <g transform="translate(15, 55)">
+      <circle cx="12" cy="15" r="8" fill="#DCFCE7" />
+      <text x="28" y="18" class="card-title" fill="#14532D">Release Authorized</text>
+      <text x="28" y="30" class="card-subtitle" fill="#166534">release-readiness.json</text>
+      <text x="0" y="48" class="bullet-text" fill="#166534">• Unlocks protected shell commands</text>
+      <text x="0" y="62" class="bullet-text" fill="#166534">• Unblocks forced git releases</text>
+      <text x="0" y="76" class="bullet-text" fill="#166534">• Triggers zero-downtime deployment</text>
+      <text x="0" y="90" class="bullet-text" fill="#166534">• Broadcasts release cards to Slack</text>
+      <text x="0" y="104" class="bullet-text" fill="#166534">• Commits safe episode to memory</text>
+    </g>
+  </g>
+
+</svg>

@@ -1,0 +1,137 @@
+---
+title: "CLI Reference"
+description: "rstack-agents command-line interface — framework-neutral inspection and management."
+---
+
+## Overview
+
+The `rstack-agents` CLI is framework-neutral and works in any environment. Use it to inspect assets, validate the registry, and manage plugins — without needing Pi or any other runtime.
+
+## Installation
+
+The CLI is included in the npm package:
+
+```bash
+npm install -g rstack-agents
+# or use it from a local checkout:
+node bin/rstack-agents.js <command>
+```
+
+## Commands
+
+### `list`
+
+List available assets by type.
+
+```bash
+rstack-agents list agents
+rstack-agents list skills
+rstack-agents list plugins
+rstack-agents list prompts
+```
+
+**Example output:**
+```
+$ rstack-agents list agents
+
+196 agents found:
+
+  core/
+    orchestrator        → Team lead, routes lifecycle, manages approval gates
+    builder             → Implementation agent with write permissions
+    validator           → Read-only review agent
+
+  sdlc/
+    00-environment      → Detect tools, produce environment_report.json
+    01-transcript       → Parse raw input into transcript.json
+    02-requirements     → Extract requirements with acceptance criteria
+    03-documentation    → Generate BRD, FRD, SOW documents
+    04-planning         → Sprint plan, milestones, team composition
+    05-jira             → Create Jira tickets from requirements
+    06-architecture     → System design, API contracts, DB schema
+    07-code             → Generate production code scaffolding
+    08-testing          → Test plans, unit tests, security tests
+    09-deployment       → Dockerfile, CI/CD, deploy scripts
+    10-summary          → Executive summary, handoff docs
+    11-feedback-loop    → Retrospective, traceability audit
+    12-security-threat-model → STRIDE threat model
+    13-compliance-checker    → GDPR/HIPAA/SOC2/PCI-DSS gap analysis
+    14-cost-estimation  → Cloud cost forecast
+```
+
+---
+
+### `validate`
+
+Validate the full asset registry — checks frontmatter, duplicate names, broken references, and package integrity.
+
+```bash
+rstack-agents validate
+```
+
+**Example output:**
+```
+$ rstack-agents validate
+
+Validating agents...    196/196 ✓
+Validating skills...    156/156 ✓
+Validating plugins...    72/72  ✓
+Validating prompts...    36/36  ✓
+
+Checking for duplicate names...  ✓
+Checking agent references...     ✓
+Checking plugin manifests...     ✓
+
+✓ Validation passed — 460 assets, 0 errors
+```
+
+---
+
+### `add plugin`
+
+Add a domain plugin pack to your project.
+
+```bash
+rstack-agents add plugin backend-development
+rstack-agents add plugin frontend-design
+rstack-agents add plugin cloud-infrastructure
+```
+
+---
+
+### `info`
+
+Show detailed information about a specific agent, skill, or plugin.
+
+```bash
+rstack-agents info agent orchestrator
+rstack-agents info skill security-owasp
+rstack-agents info plugin backend-development
+```
+
+---
+
+## Local development equivalent
+
+If you have a local checkout and don't want to install globally:
+
+```bash
+# List agents
+node bin/rstack-agents.js list agents
+
+# Validate registry
+node bin/rstack-agents.js validate
+
+# Add a plugin
+node bin/rstack-agents.js add plugin backend-development
+```
+
+## npm scripts
+
+The package also exposes these scripts:
+
+```bash
+npm test          # Run test suite
+npm run validate  # Run rstack-agents validate
+npm run lint      # ESLint src/, bin/, tests/
+```

@@ -1,0 +1,44 @@
+---
+title: "Agent 01 — Transcript"
+description: "Processes raw project briefings, meeting notes, or conversation transcripts into structured JSON."
+---
+
+<Info>
+  **File:** `agents/sdlc/01-transcript.md` · **Model:** Sonnet · **Tools:** Bash, Read, Write
+</Info>
+
+## Purpose
+
+The transcript agent converts raw, unstructured input — meeting notes, product briefs, conversation logs — into a clean structured JSON that all downstream agents can rely on. It surfaces ambiguities rather than silently resolving them.
+
+## What it does
+
+1. Reads raw project input (meeting transcript, brief, or notes)
+2. Reads `environment_report.json`
+3. Extracts: project name, goals, stakeholders, constraints, timeline, key decisions
+4. Flags `open_questions` for ambiguous items — never fills gaps with assumptions
+5. Produces `transcript.json`
+
+## Core principle
+
+> Preserve signal, surface ambiguity. A correctly flagged open question is worth more than a confident wrong answer.
+
+## Outputs
+
+```json
+// .rstack/runs/<run_id>/transcript.json
+{
+  "project_name": "Customer Portal v2",
+  "goals": ["Migrate legacy portal to React", "Add SSO support"],
+  "stakeholders": [
+    { "name": "Sarah K.", "role": "Product Owner" }
+  ],
+  "constraints": ["Launch by Q3", "Must support IE11"],
+  "timeline": "12 weeks",
+  "key_decisions": ["Use React + TypeScript", "Auth via Okta"],
+  "open_questions": [
+    "Which database? PostgreSQL vs MySQL not specified.",
+    "Is IE11 support mandatory or best-effort?"
+  ]
+}
+```

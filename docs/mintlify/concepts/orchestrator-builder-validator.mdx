@@ -1,0 +1,139 @@
+---
+title: "Orchestrator, Builder & Validator"
+description: "The three core agent roles in the RStack team model."
+---
+
+## The three-role model
+
+RStack uses a structured team of three distinct agent roles. Each role has defined responsibilities, tool permissions, and output contracts.
+
+---
+
+## Orchestrator
+
+The orchestrator is the team lead. It is the only agent that communicates directly with the product owner.
+
+**Responsibilities:**
+- Route the goal through the lifecycle
+- Ask clarifying questions before planning
+- Manage approval gates
+- Select specialists and plugins per task
+- Monitor run state and report status
+
+**Key behaviors:**
+- Never implements code directly
+- Defers to builder team for all implementation
+- Defers to validator team for all review
+- Stops the run and surfaces blockers to the product owner
+
+**File:** `agents/core/orchestrator.md`
+
+---
+
+## Builder
+
+Builders do the implementation work. They operate within a scoped task packet that includes the relevant agents, skills, and plugins.
+
+**Responsibilities:**
+- Implement tasks to the exact acceptance criteria
+- Write only the files specified in the task
+- Run tests and fix failures before claiming done
+- Write `builder.json` as the completion contract
+
+**Tool permissions:**
+```
+read, bash, edit, write, grep, find, ls
+```
+
+**Output contract — `builder.json`:**
+```json
+{
+  "task_id": "task_001",
+  "status": "COMPLETE",
+  "files_changed": ["src/auth.js", "tests/auth.test.js"],
+  "acceptance_criteria_met": true,
+  "commands_run": ["npm test"],
+  "notes": ""
+}
+```
+
+**Key rules:**
+- Never edits files outside the task scope
+- Never claims DONE without tests passing
+- Never writes to secret-like paths without approval
+
+**File:** `agents/core/builder.md`
+
+---
+
+## Validator
+
+Validators review builder output with read-only tools. They cannot modify files.
+
+**Responsibilities:**
+- Check that acceptance criteria are met
+- Verify tests pass and no regressions exist
+- Identify security concerns
+- Write `validation.json` as the review contract
+
+**Tool permissions:**
+```
+read, grep, find, ls
+```
+*(No write, no bash that modifies state)*
+
+**Output contract — `validation.json`:**
+```json
+{
+  "task_id": "task_001",
+  "verdict": "PASS",
+  "checks": {
+    "acceptance_criteria": true,
+    "tests_pass": true,
+    "no_regressions": true,
+    "security_concerns": false
+  },
+  "issues": [],
+  "notes": ""
+}
+```
+
+**Possible verdicts:**
+- `PASS` — Task is complete and correct
+- `PASS_WITH_NOTES` — Complete but minor issues noted
+- `FAIL` — Task must be reworked; issues listed
+
+**File:** `agents/core/validator.md`
+
+---
+
+## Specialist agents
+
+Beyond the core three, RStack ships specialist agents for deep domain work:
+
+| Category | Examples |
+|---|---|
+| Backend | API builders, database specialists, auth specialists |
+| Frontend | React/Vue/CSS specialists, accessibility reviewers |
+| DevOps | CI/CD, Docker, Kubernetes, Terraform specialists |
+| QA | Test writers, integration test specialists |
+| Security | OWASP reviewers, penetration testing guides |
+| Data | SQL specialists, data pipeline agents |
+| Docs | Technical writers, API doc specialists |
+
+Specialists are selected by the orchestrator based on task domain and included in the task packet sent to builders and validators.
+
+## How task packets work
+
+When `sdlc_build_next` is called, the orchestrator assembles a **task packet** containing:
+
+```text
+Task specification
+  + Core agent instructions (builder.md or validator.md)
+  + SDLC pipeline agent (e.g., agents/sdlc/07-code.md)
+  + Domain specialist agent (e.g., plugins/backend-development/agents/api-builder.md)
+  + Relevant skills (e.g., skills/security-owasp/SKILL.md)
+  + Plugin context (e.g., plugins/backend-development/plugin.json)
+```
+
+This scoped packet limits what the builder sees to exactly what it needs — preventing context bleed and keeping costs down.

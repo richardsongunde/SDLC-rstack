@@ -1,0 +1,170 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" width="100%" height="100%">
+  <defs>
+    <!-- Styles -->
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap');
+      text {
+        font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      }
+      .main-title { font-weight: 700; font-size: 18px; fill: #0F172A; }
+      .main-subtitle { font-weight: 500; font-size: 11px; fill: #64748B; }
+      .step-num { font-weight: 800; font-size: 10px; fill: #FFFFFF; }
+      .card-title { font-weight: 700; font-size: 13px; fill: #0F172A; }
+      .card-subtitle { font-weight: 600; font-size: 9px; fill: #64748B; }
+      .bullet-text { font-weight: 400; font-size: 10px; fill: #334155; }
+      .flow-label { font-weight: 700; font-size: 9px; fill: #C2410C; }
+    </style>
+
+    <!-- Filters -->
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#0F172A" flood-opacity="0.04" />
+    </filter>
+    <filter id="card-shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#0F172A" flood-opacity="0.04" />
+    </filter>
+
+    <!-- Gradients -->
+    <linearGradient id="coral-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFAF5" />
+      <stop offset="100%" stop-color="#FFF3E0" />
+    </linearGradient>
+    <linearGradient id="blue-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F5F9FF" />
+      <stop offset="100%" stop-color="#E1EFFE" />
+    </linearGradient>
+    <linearGradient id="purple-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDF8FF" />
+      <stop offset="100%" stop-color="#F5E6FF" />
+    </linearGradient>
+    <linearGradient id="green-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F0FDF4" />
+      <stop offset="100%" stop-color="#DCFCE7" />
+    </linearGradient>
+
+    <!-- Markers -->
+    <marker id="arr-orange" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#EA580C" />
+    </marker>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="100%" height="100%" fill="#F8FAFC" rx="12" />
+
+  <!-- Header -->
+  <g transform="translate(40, 35)">
+    <text x="0" y="0" class="main-title">Deterministic Governance — How the Sandbox Works</text>
+    <text x="0" y="16" class="main-subtitle">A simple, high-level overview of how RStack protects your systems while agents are writing code</text>
+  </g>
+
+  <!-- ==================== THE 4 CORE WORKFLOW PANELS ==================== -->
+
+  <!-- PANEL 1: INGESTION -->
+  <g transform="translate(40, 80)" filter="url(#shadow)">
+    <rect width="250" height="280" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" />
+    <rect width="250" height="34" rx="12" fill="url(#coral-grad)" />
+    <rect y="24" width="250" height="10" fill="url(#coral-grad)" />
+    <text x="45" y="21" class="card-title" fill="#C2410C">1. The Agent Proposes Action</text>
+    <circle cx="22" cy="17" r="9" fill="#EA580C" />
+    <text x="22" y="20.5" class="step-num" text-anchor="middle">1</text>
+
+    <!-- Business Context Content -->
+    <g transform="translate(20, 55)">
+      <text x="0" y="20" class="bullet-text" style="font-weight:600; fill:#9A3412;">Incoming Request:</text>
+      <text x="0" y="38" class="bullet-text">An AI agent is assigned a task (like building</text>
+      <text x="0" y="52" class="bullet-text">a feature or fixing a bug) and requests to</text>
+      <text x="0" y="66" class="bullet-text">write files or execute system commands.</text>
+
+      <rect x="0" y="90" width="210" height="110" rx="8" fill="#FFF7ED" stroke="#FED7AA" />
+      <text x="12" y="112" class="card-title" font-size="10.5px" fill="#C2410C">Goal Alignment Check</text>
+      <text x="12" y="132" class="bullet-text">• Reads Po-frozen specifications</text>
+      <text x="12" y="148" class="bullet-text">• Verifies task stays in scope</text>
+      <text x="12" y="164" class="bullet-text">• Loads safety budget rules</text>
+      <text x="12" y="180" class="bullet-text">• Restricts recursive loops</text>
+    </g>
+  </g>
+
+  <!-- PANEL 2: INTERCEPTION -->
+  <g transform="translate(330, 80)" filter="url(#shadow)">
+    <rect width="250" height="280" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" />
+    <rect width="250" height="34" rx="12" fill="url(#blue-grad)" />
+    <rect y="24" width="250" height="10" fill="url(#blue-grad)" />
+    <text x="45" y="21" class="card-title" fill="#1E40AF">2. The Harness Intercepts</text>
+    <circle cx="22" cy="17" r="9" fill="#2563EB" />
+    <text x="22" y="20.5" class="step-num" text-anchor="middle">2</text>
+
+    <!-- Business Context Content -->
+    <g transform="translate(20, 55)">
+      <text x="0" y="20" class="bullet-text" style="font-weight:600; fill:#1E40AF;">Safety First Policy:</text>
+      <text x="0" y="38" class="bullet-text">Before any command runs, the RStack</text>
+      <text x="0" y="52" class="bullet-text">Harness instantly captures the request and</text>
+      <text x="0" y="66" class="bullet-text">validates it against policy filters.</text>
+
+      <rect x="0" y="90" width="210" height="110" rx="8" fill="#EFF6FF" stroke="#BFDBFE" />
+      <text x="12" y="112" class="card-title" font-size="10.5px" fill="#1E40AF">Automatic Shields</text>
+      <text x="12" y="132" class="bullet-text" fill="#1E3A8A">• Blocks destructive commands</text>
+      <text x="12" y="148" class="bullet-text" fill="#1E3A8A">• Safeguards credential keys</text>
+      <text x="12" y="164" class="bullet-text" fill="#1E3A8A">• Blocks force branch pushes</text>
+      <text x="12" y="180" class="bullet-text" fill="#1E3A8A">• Flags suspicious activities</text>
+    </g>
+  </g>
+
+  <!-- PANEL 3: SANDBOX -->
+  <g transform="translate(620, 80)" filter="url(#shadow)">
+    <rect width="250" height="280" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" />
+    <rect width="250" height="34" rx="12" fill="url(#purple-grad)" />
+    <rect y="24" width="250" height="10" fill="url(#purple-grad)" />
+    <text x="45" y="21" class="card-title" fill="#6B21A8">3. Isolated Execution</text>
+    <circle cx="22" cy="17" r="9" fill="#7C3AED" />
+    <text x="22" y="20.5" class="step-num" text-anchor="middle">3</text>
+
+    <!-- Business Context Content -->
+    <g transform="translate(20, 55)">
+      <text x="0" y="20" class="bullet-text" style="font-weight:600; fill:#6B21A8;">Gated Double Sandbox:</text>
+      <text x="0" y="38" class="bullet-text">To eliminate confirmation bias, RStack</text>
+      <text x="0" y="52" class="bullet-text">spawns separate workspaces with different</text>
+      <text x="0" y="66" class="bullet-text">restricted permission levels.</text>
+
+      <rect x="0" y="90" width="210" height="110" rx="8" fill="#FDF8FF" stroke="#E9D5FF" />
+      <text x="12" y="112" class="card-title" font-size="10.5px" fill="#6B21A8">Dual Workspace Gating</text>
+      <text x="12" y="132" class="bullet-text" fill="#581C87">• Builder: Active writing space</text>
+      <text x="12" y="148" class="bullet-text" fill="#581C87">• Validator: Strictly read-only</text>
+      <text x="12" y="164" class="bullet-text" fill="#581C87">• Eliminates guess-and-test loops</text>
+      <text x="12" y="180" class="bullet-text" fill="#581C87">• Confined sandbox environment</text>
+    </g>
+  </g>
+
+  <!-- PANEL 4: PROOF -->
+  <g transform="translate(910, 80)" filter="url(#shadow)">
+    <rect width="250" height="280" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.5" />
+    <rect width="250" height="34" rx="12" fill="url(#green-grad)" />
+    <rect y="24" width="250" height="10" fill="url(#green-grad)" />
+    <text x="45" y="21" class="card-title" fill="#166534">4. Signed Success Proof</text>
+    <circle cx="22" cy="17" r="9" fill="#16A34A" />
+    <text x="22" y="20.5" class="step-num" text-anchor="middle">4</text>
+
+    <!-- Business Context Content -->
+    <g transform="translate(20, 55)">
+      <text x="0" y="20" class="bullet-text" style="font-weight:600; fill:#166534;">Audit Compliance Trail:</text>
+      <text x="0" y="38" class="bullet-text">Once tests pass, the harness signs off on</text>
+      <text x="0" y="52" class="bullet-text">verifiable evidence contracts, ensuring all</text>
+      <text x="0" y="66" class="bullet-text">work is auditable.</text>
+
+      <rect x="0" y="90" width="210" height="110" rx="8" fill="#F0FDF4" stroke="#BBF7D0" />
+      <text x="12" y="112" class="card-title" font-size="10.5px" fill="#166534">Verifiable Evidence Ledger</text>
+      <text x="12" y="132" class="bullet-text" fill="#14532D">• Writes immutable contract logs</text>
+      <text x="12" y="148" class="bullet-text" fill="#14532D">• Saves full audit trace ledgers</text>
+      <text x="12" y="164" class="bullet-text" fill="#14532D">• Learns safely from past runs</text>
+      <text x="12" y="180" class="bullet-text" fill="#14532D">• Instantly updates team alerts</text>
+    </g>
+  </g>
+
+  <!-- Connectors (Simple, clean, single line, no overlaps) -->
+  <path d="M 290 220 H 330" fill="none" stroke="#EA580C" stroke-width="1.5" marker-end="url(#arr-orange)" />
+  <path d="M 580 220 H 620" fill="none" stroke="#EA580C" stroke-width="1.5" marker-end="url(#arr-orange)" />
+  <path d="M 870 220 H 910" fill="none" stroke="#EA580C" stroke-width="1.5" marker-end="url(#arr-orange)" />
+
+  <text x="310" y="210" class="flow-label" text-anchor="middle">SUBMIT</text>
+  <text x="600" y="210" class="flow-label" text-anchor="middle">VERIFY</text>
+  <text x="890" y="210" class="flow-label" text-anchor="middle">RECORD</text>
+
+</svg>

@@ -27,6 +27,7 @@ export const EPISODE_REQUIRED_FIELDS = Object.freeze([
 ]);
 
 const SECRET_PATTERNS = [
+  /(authorization|bearer)\s*[:=]?\s*bearer\s+\S+/gi,
   /(api[_-]?key|token|secret|password|authorization|bearer)\s*[:=]\s*[^\s,;]+/gi,
   /sk-[A-Za-z0-9_-]{12,}/g,
   /ak_[A-Za-z0-9_-]{12,}/g,
@@ -98,7 +99,11 @@ export function sanitizeMemoryText(value, maxLength = 500) {
     .replace(/[\r\n\t]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-  for (const pattern of SECRET_PATTERNS) text = text.replace(pattern, '$1=[REDACTED]');
+  for (const pattern of SECRET_PATTERNS) {
+    text = text.replace(pattern, (match, p1) => {
+      return p1 ? `${p1}=[REDACTED]` : '[REDACTED]';
+    });
+  }
   for (const pattern of PROMPT_INJECTION_PATTERNS) text = text.replace(pattern, '[instruction-like text removed]');
   if (text.length > maxLength) text = `${text.slice(0, maxLength - 1)}…`;
   return text;

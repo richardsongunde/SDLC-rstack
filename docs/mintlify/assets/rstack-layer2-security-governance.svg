@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 480" width="100%" height="100%">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;display=swap');
+      text { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+      .title { font-weight: 700; font-size: 18px; fill: #0F172A; text-anchor: middle; }
+      .section-title { font-weight: 700; font-size: 13px; fill: #1E293B; }
+      .card-title { font-weight: 600; font-size: 12px; fill: #0F172A; }
+      .card-subtitle { font-weight: 500; font-size: 10px; fill: #64748B; }
+      .bullet-text { font-weight: 400; font-size: 9.5px; fill: #334155; }
+      .flow-label { font-weight: 600; font-size: 9.5px; fill: #475569; }
+    </style>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#0F172A" flood-opacity="0.04" />
+    </filter>
+    <linearGradient id="orange-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFAF5" />
+      <stop offset="100%" stop-color="#FFF3E0" />
+    </linearGradient>
+  </defs>
+
+  <rect width="100%" height="100%" fill="#FAFBFD" />
+  <text x="550" y="30" class="title">Layer 2: Deterministic Governance &amp; Security Architecture</text>
+
+  <!-- Box 1: Command Sandbox Gate -->
+  <g transform="translate(30, 70)">
+    <rect width="220" height="370" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" filter="url(#shadow)" />
+    <rect width="220" height="34" rx="12" fill="url(#orange-grad)" />
+    <rect y="24" width="220" height="10" fill="url(#orange-grad)" />
+    <text x="110" y="22" class="section-title" fill="#C2410C" text-anchor="middle">Command Shield</text>
+    
+    <g transform="translate(15, 55)">
+      <circle cx="12" cy="15" r="8" fill="#FFF7ED" />
+      <text x="28" y="18" class="card-title">1. Execution Sandboxing</text>
+      <text x="28" y="30" class="card-subtitle">Shell Command Interception</text>
+      <text x="0" y="48" class="bullet-text" style="font-weight:600; fill:#9A3412;">Blocks Destructive Operations:</text>
+      <text x="0" y="62" class="bullet-text" fill="#C2410C">• rm -rf (recursive deletions)</text>
+      <text x="0" y="76" class="bullet-text" fill="#C2410C">• git push -f (forced pushes)</text>
+      <text x="0" y="90" class="bullet-text" fill="#C2410C">• npm publish (release triggers)</text>
+      <text x="0" y="104" class="bullet-text" fill="#C2410C">• kubectl apply / helm installs</text>
+      <text x="0" y="118" class="bullet-text" fill="#C2410C">• terraform apply / destroy</text>
+    </g>
+  </g>
+
+  <!-- Box 2: Protected Write Paths -->
+  <g transform="translate(295, 70)">
+    <rect width="220" height="370" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" filter="url(#shadow)" />
+    <rect width="220" height="34" rx="12" fill="url(#orange-grad)" />
+    <rect y="24" width="220" height="10" fill="url(#orange-grad)" />
+    <text x="110" y="22" class="section-title" fill="#C2410C" text-anchor="middle">Secret Shields</text>
+
+    <g transform="translate(15, 55)">
+      <circle cx="12" cy="15" r="8" fill="#FFF7ED" />
+      <text x="28" y="18" class="card-title">2. Path Protection Rules</text>
+      <text x="28" y="30" class="card-subtitle">Credential &amp; Env Blocks</text>
+      <text x="0" y="48" class="bullet-text" style="font-weight:600; fill:#9A3412;">Protected Write Paths:</text>
+      <text x="0" y="62" class="bullet-text">• .env / .env.* configurations</text>
+      <text x="0" y="76" class="bullet-text">• id_rsa / id_ed25519 (SSH keys)</text>
+      <text x="0" y="90" class="bullet-text">• credentials.* &amp; secrets.*</text>
+      <text x="0" y="104" class="bullet-text">• .npmrc &amp; .pypirc key configs</text>
+      <text x="0" y="118" class="bullet-text">• *.pem &amp; *.key certificates</text>
+    </g>
+  </g>
+
+  <!-- Box 3: Automated Threat Modeling -->
+  <g transform="translate(560, 70)">
+    <rect width="220" height="370" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" filter="url(#shadow)" />
+    <rect width="220" height="34" rx="12" fill="url(#orange-grad)" />
+    <rect y="24" width="220" height="10" fill="url(#orange-grad)" />
+    <text x="110" y="22" class="section-title" fill="#C2410C" text-anchor="middle">Compliance Checker</text>
+
+    <g transform="translate(15, 55)">
+      <circle cx="12" cy="15" r="8" fill="#FFF7ED" />
+      <text x="28" y="18" class="card-title">3. Continuous Compliance</text>
+      <text x="28" y="30" class="card-subtitle">GDPR, HIPAA, SOC2</text>
+      <text x="0" y="48" class="bullet-text" style="font-weight:600; fill:#9A3412;">Security Threat Modeling:</text>
+      <text x="0" y="62" class="bullet-text">• Maps STRIDE threats automatically</text>
+      <text x="0" y="76" class="bullet-text">• Verifies OWASP vulnerability gates</text>
+      <text x="0" y="90" class="bullet-text">• Scans third-party dependency trees</text>
+      <text x="0" y="104" class="bullet-text">• Audits code against GDPR rules</text>
+      <text x="0" y="118" class="bullet-text">• Rejects builds breaking policy specs</text>
+    </g>
+  </g>
+
+  <!-- Box 4: Prompt Injection & Leak Filters -->
+  <g transform="translate(825, 70)">
+    <rect width="240" height="370" rx="12" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1" filter="url(#shadow)" />
+    <rect width="240" height="34" rx="12" fill="url(#orange-grad)" />
+    <rect y="24" width="240" height="10" fill="url(#orange-grad)" />
+    <text x="120" y="22" class="section-title" fill="#C2410C" text-anchor="middle">Injection &amp; Leak Filter</text>
+
+    <g transform="translate(15, 55)">
+      <circle cx="12" cy="15" r="8" fill="#FFF7ED" />
+      <text x="28" y="18" class="card-title">4. Real-time Leak Filtering</text>
+      <text x="28" y="30" class="card-subtitle">Secret &amp; Pattern Scrubber</text>
+      <text x="0" y="48" class="bullet-text" style="font-weight:600; fill:#9A3412;">Active Scrubbing Filters:</text>
+      <text x="0" y="62" class="bullet-text">• API key matchers (sk-*, ak_*, etc.)</text>
+      <text x="0" y="76" class="bullet-text">• Prompt injection pattern scrubbers</text>
+      <text x="0" y="90" class="bullet-text">• Blocks "ignore prior rules" attacks</text>
+      <text x="0" y="104" class="bullet-text">• Filters PII (emails, phone numbers)</text>
+      <text x="0" y="118" class="bullet-text">• Strict reject-at-write-time policy</text>
+    </g>
+  </g>
+
+  <!-- Connectors -->
+  <path d="M 250 250 H 295" fill="none" stroke="#EA580C" stroke-width="1.5" marker-end="url(#arrow-orange)" />
+  <path d="M 515 250 H 560" fill="none" stroke="#EA580C" stroke-width="1.5" marker-end="url(#arrow-orange)" />
+  <path d="M 780 250 H 825" fill="none" stroke="#EA580C" stroke-width="1.5" marker-end="url(#arrow-orange)" />
+
+</svg>

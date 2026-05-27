@@ -1,0 +1,137 @@
+---
+title: "Installation"
+description: "All supported installation methods for RStack SDLC."
+---
+
+RStack can be installed in any AI coding environment. Choose the method that matches your runtime.
+
+## Requirements
+
+- Node.js >= 18.0.0
+- npm >= 9.0.0
+
+## Pi — Native adapter (full-featured)
+
+The native Pi adapter gives RStack lifecycle hooks, tool gating, session events, and the full governed harness.
+
+```bash
+# Install from npm
+pi install npm:rstack-agents
+
+# Install from local checkout
+pi install /path/to/SDLC-rstack
+
+# One-off run without installing
+pi -e /path/to/SDLC-rstack/extensions/rstack-sdlc.ts
+```
+
+## Claude Code — Asset adapter
+
+```bash
+export RSTACK_HOME=/path/to/SDLC-rstack
+
+mkdir -p .claude/agents/rstack .claude/commands/rstack .rstack/vendor/rstack
+cp -R "$RSTACK_HOME/agents"    .rstack/vendor/rstack/
+cp -R "$RSTACK_HOME/skills"    .rstack/vendor/rstack/
+cp -R "$RSTACK_HOME/plugins"   .rstack/vendor/rstack/
+cp -R "$RSTACK_HOME/prompts"   .rstack/vendor/rstack/
+cp -R "$RSTACK_HOME/agents"/*  .claude/agents/rstack/
+cp "$RSTACK_HOME/prompts"/*.md .claude/commands/rstack/ 2>/dev/null || true
+```
+
+Add to your `CLAUDE.md`:
+
+```markdown
+# RStack SDLC
+Use RStack SDLC from `.rstack/vendor/rstack`.
+Start with `.rstack/vendor/rstack/agents/core/orchestrator.md`.
+Use `.rstack/vendor/rstack/agents/core/builder.md` for implementation.
+Use `.rstack/vendor/rstack/agents/core/validator.md` for verification.
+Write all run state under `.rstack/runs/<run_id>/`.
+Require specs, approvals, traceability, `builder.json`, and `validation.json`.
+Never claim DONE without evidence.
+```
+
+## Codex CLI — AGENTS.md adapter
+
+```bash
+export RSTACK_HOME=/path/to/SDLC-rstack
+mkdir -p .rstack/vendor/rstack
+cp -R "$RSTACK_HOME/agents"  .rstack/vendor/rstack/
+cp -R "$RSTACK_HOME/skills"  .rstack/vendor/rstack/
+cp -R "$RSTACK_HOME/plugins" .rstack/vendor/rstack/
+cp -R "$RSTACK_HOME/prompts" .rstack/vendor/rstack/
+
+cat > AGENTS.md <<'EOF'
+# RStack SDLC
+Use RStack SDLC from `.rstack/vendor/rstack`.
+Read `.rstack/vendor/rstack/agents/core/orchestrator.md` first.
+For implementation, follow `.rstack/vendor/rstack/agents/core/builder.md`.
+For verification, follow `.rstack/vendor/rstack/agents/core/validator.md`.
+Use SDLC pipeline agents from `.rstack/vendor/rstack/agents/sdlc/`.
+Write run state under `.rstack/runs/<run_id>/`.
+Require specs, approval gates, traceability, builder contracts, and validation contracts.
+EOF
+```
+
+## Gemini CLI — GEMINI.md adapter
+
+```bash
+export RSTACK_HOME=/path/to/SDLC-rstack
+mkdir -p .rstack/vendor/rstack
+cp -R "$RSTACK_HOME/agents"  .rstack/vendor/rstack/
+cp -R "$RSTACK_HOME/skills"  .rstack/vendor/rstack/
+cp -R "$RSTACK_HOME/plugins" .rstack/vendor/rstack/
+cp -R "$RSTACK_HOME/prompts" .rstack/vendor/rstack/
+
+cat > GEMINI.md <<'EOF'
+# RStack SDLC
+Use RStack SDLC from `.rstack/vendor/rstack`.
+Start with `.rstack/vendor/rstack/agents/core/orchestrator.md`.
+Use the SDLC pipeline in `.rstack/vendor/rstack/agents/sdlc/`.
+Maintain `.rstack/runs/<run_id>/` with specs, approvals, traceability, tasks, builder.json, and validation.json.
+Do not perform destructive actions without explicit human approval.
+Do not claim DONE without command evidence.
+EOF
+```
+
+## Universal — Asset-only mode
+
+Use this when your framework can read files but has no native RStack adapter.
+
+```bash
+git clone https://github.com/richard-devbot/SDLC-rstack.git ~/rstack-agents
+export RSTACK_HOME=~/rstack-agents
+```
+
+Bootstrap prompt for any agent:
+
+```text
+Use RStack SDLC from $RSTACK_HOME.
+Read agents/core/orchestrator.md first.
+Use agents/core/builder.md for implementation tasks.
+Use agents/core/validator.md for read-only verification.
+Use agents/sdlc/ for lifecycle routing.
+Use skills/ and plugins/ only when relevant.
+Write run state under .rstack/runs/<run_id>/.
+Require specs, approvals, traceability, builder.json, validation.json, and command evidence.
+Never claim DONE without evidence.
+```
+
+## Verify your installation
+
+```bash
+# Check CLI is working
+rstack-agents list agents
+rstack-agents list skills
+rstack-agents list plugins
+rstack-agents validate
+```
+
+Expected output:
+```
+196 agents found
+156 skills found
+72 plugins found
+✓ Validation passed
+```

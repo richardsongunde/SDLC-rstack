@@ -1,0 +1,581 @@
+---
+title: "System Architecture"
+description: "Technical deep-dive into every layer of the RStack SDLC ecosystem — harness, pipeline, governance, security, memory, and adapters."
+---
+
+<Note>
+  This document is written for engineering leaders and technical stakeholders. It covers the complete RStack ecosystem as built across the `feat/harness-foundation` and `feat/episodic-memory-layer` branches, now merged to `main`.
+</Note>
+
+<CardGroup cols={2}>
+  <Card title="Back to Overview" icon="arrow-left" href="/">
+    Return to the main RStack SDLC introduction and product features.
+  </Card>
+  <Card title="Quickstart Guide" icon="bolt" href="/quickstart">
+    Get RStack running in under 5 minutes.
+  </Card>
+</CardGroup>
+
+## Executive summary
+
+RStack SDLC is a **governed AI software-delivery harness**. It wraps AI coding agents in a deterministic reliability layer — enforcing lifecycle contracts, approval gates, evidence requirements, guardrails, and episodic memory — so that software is built the way a productive engineering team would build it, not the way a single chatbot would guess at it.
+
+The system has seven distinct layers:
+
+| Layer | What it does |
+|---|---|
+| **Runtime Adapter** | Binds RStack to Pi via lifecycle hooks and registers 12 SDLC tools |
+| **Pipeline Engine** | Routes work through 15 canonical SDLC stages, each producing a typed artifact |
+| **Harness Core** | Enforces contracts, validates evidence, manages run state |
+| **Governance** | Approval gates, guardrails, and human-in-the-loop controls |
+| **Security** | Protected actions, secret scanning, prompt injection detection |
+| **Episodic Memory** | Cross-run learning with lexical retrieval and validator-gated writes |
+| **Asset Registry** | 196 agents · 156 skills · 72 plugins · 36 prompts, fully indexed |
+
+---
+
+## Full ecosystem diagram
+
+<Note>
+  **Excalidraw source** — the full editable diagram is at `docs/mintlify/assets/rstack-ecosystem-architecture.excalidraw`. Open it at [excalidraw.com](https://excalidraw.com) (File → Open) or in any Excalidraw-compatible editor. It covers all eight layers: Developer trigger → Pi Extension → Harness Core → 15-Stage Pipeline → Governance → Security → Episodic Memory → Asset Registry → Run State.
+</Note>
+
+### Interactive Flow (Mermaid)
+
+```mermaid
+flowchart TD
+    DEV["👤 Developer / Product Owner\ngit push · goal input · approval gates"]
+
+    subgraph PI["Pi Runtime (Native Adapter)"]
+        direction TB
+        HOOKS["Lifecycle Hooks\nresources_discover · session_start\nbefore_agent_start · tool_call\ntool_result · session_shutdown"]
+        TOOLS["12 SDLC Tools\nsdlc_orchestrate · sdlc_start · sdlc_clarify\nsdlc_plan · sdlc_build_next · sdlc_validate\nsdlc_agents · sdlc_delegate · sdlc_approve\nsdlc_spec · sdlc_status · sdlc_memory"]
+    end
+
+    subgraph HARNESS["Harness Core (src/harness/)"]
+        direction LR
+        CONTRACTS["contracts.js\nBuilder & Validator\nContract Validation"]
+        STAGES["stages.js\n15 Canonical\nSDLC Stages"]
+        GUARDRAILS["guardrails.js\nMaxAttempts · MaxToolCalls\nRequireContracts · RequireEvidence"]
+        EVIDENCE["evidence.js\nAppend-only\nevidence.jsonl Ledger"]
+        RUNSTATE["run-state.js\nRun Directory &\nStage Folder Setup"]
+    end
+
+    subgraph PIPELINE["SDLC Pipeline (15 Stages)"]
+        direction LR
+        P0["00 Environment"] --> P1["01 Transcript"] --> P2["02 Requirements"] --> P3["03 Documentation"]
+        P3 --> P4["04 Planning"] --> P5["05 Jira"] --> P6["06 Architecture"]
+        P6 --> P7["07 Code"] --> P8["08 Testing"] --> P9["09 Deployment"]
+        P9 --> P10["10 Summary"] --> P11["11 Feedback Loop"]
+        P6 --> P12["12 Security Threat Model"]
+        P6 --> P13["13 Compliance Checker"]
+        P4 --> P14["14 Cost Estimation"]
+    end
+
+    subgraph GOV["Governance Layer"]
+        GATE["Approval Gates\nsdlc_approve()"]
+        BLOCK["Protected Actions\nrm -rf · git push\nnpm publish · terraform apply"]
+        OPMODE["Interactive / Express Mode\nHuman gates enforced in interactive"]
+    end
+
+    subgraph SEC["Security Layer"]
+        SECRETS["Secret Pattern Scanner\napi_key · token · sk-xxx"]
+        INJECT["Prompt Injection\nDetector"]
+        PATHS["Protected Write Paths\n.env · id_rsa · credentials.*"]
+    end
+
+    subgraph MEM["Episodic Memory (src/harness/memory.js)"]
+        EPISODES["Episode Store\n.rstack/memory/episodes.jsonl"]
+        RECALL["Lexical Retrieval\ntopK=3 · minScore=0.08"]
+        MEMWRITE["Validator-Gated Writes\nwrite_policy: validator-approved-only"]
+        MEMSANITIZE["Secret Sanitiser\nstrips secrets before storage"]
+    end
+
+    subgraph ASSETS["Asset Registry"]
+        AGENTS["196 Agents\ncore · sdlc · specialists"]
+        SKILLS["156 Skills\nOWASP · code-review · deploy · docs"]
+        PLUGINS["72 Plugins\nbackend · frontend · devops · security"]
+        PROMPTS["36 Prompts\ncommand-style workflows"]
+    end
+
+    subgraph STATE[".rstack/ Run State"]
+        RUNS[".rstack/runs/<run_id>/\nmanifest.json · plan.md · tasks.json\napprovals.json · traceability.json\nevents.jsonl · evidence.jsonl"]
+        ARTF["artifacts/stages/<stage-id>/\n<typed artifact per stage>"]
+        TASKS["tasks/<task_id>/\nprompt.md · builder.json\nvalidation.json"]
+    end
+
+    DEV -->|"goal / approval"| TOOLS
+    HOOKS -->|"injects orchestrator packet"| TOOLS
+    TOOLS -->|"creates & advances run"| HARNESS
+    HARNESS -->|"routes to"| PIPELINE
+    PIPELINE -->|"produces typed artifacts"| ARTF
+    HARNESS -->|"writes events"| RUNS
+    HARNESS -->|"appends evidence"| EVIDENCE
+    EVIDENCE --> RUNS
+    GOV -->|"gates every build task"| TOOLS
+    HOOKS -->|"intercepts tool_call"| BLOCK
+    BLOCK --> SEC
+    MEM -->|"injects recalled episodes"| TOOLS
+    HARNESS -->|"episode after validation"| MEMWRITE
+    ASSETS -->|"selected per stage domain"| PIPELINE
+
+    style PI fill:#dbeafe,stroke:#3b82f6
+    style HARNESS fill:#fef9c3,stroke:#ca8a04
+    style PIPELINE fill:#dcfce7,stroke:#16a34a
+    style GOV fill:#fce7f3,stroke:#db2777
+    style SEC fill:#fee2e2,stroke:#dc2626
+    style MEM fill:#ede9fe,stroke:#7c3aed
+    style ASSETS fill:#f0fdf4,stroke:#15803d
+    style STATE fill:#f8fafc,stroke:#64748b
+```
+
+---
+
+## Layer 1 — Intake & Alignment (Runtime Adapter)
+
+**File:** `extensions/rstack-sdlc.ts`
+
+<Frame>
+  <img src="/assets/rstack-layer1-runtime-adapter.svg" alt="Layer 1 Runtime Adapter and Goal Intake Flow Details" />
+</Frame>
+
+The Pi extension is the entry point. It runs as a TypeScript module inside Pi and wires RStack to the Pi lifecycle via six hooks.
+
+### Lifecycle hooks
+
+| Hook | Trigger | RStack behavior |
+|---|---|---|
+| `resources_discover` | Pi discovers skills/prompts | Returns package + project skill and prompt paths |
+| `session_start` | Session opens | Creates `.rstack/` directories; sets `RStack SDLC ready` status line |
+| `before_agent_start` | Agent prompt evaluated | If prompt mentions `rstack/sdlc/orchestrator`, injects full orchestrator packet into system prompt |
+| `tool_call` | Agent invokes any tool | Logs to `events.jsonl`; **blocks destructive commands** unless approved |
+| `tool_result` | Tool returns output | Logs bounded summary (≤ 1200 chars) to `events.jsonl` |
+| `session_shutdown` | Session closes | Appends `session_shutdown` event to active run |
+
+### Registered SDLC tools (12 total)
+
+```
+sdlc_orchestrate   → Load orchestrator packet for a goal
+sdlc_start         → Create .rstack/runs/<run_id>/ and manifest
+sdlc_clarify       → Capture product-owner answers before planning
+sdlc_plan          → Generate plan, tasks, specs, traceability
+sdlc_build_next    → Assemble next gated task packet (with approval check)
+sdlc_validate      → Run contract + evidence checks; write validation.json
+sdlc_agents        → List/filter available agents, skills, plugins
+sdlc_delegate      → Spawn up to 8 isolated Pi workers (validators = read-only)
+sdlc_approve       → Record human APPROVED / REJECTED gate
+sdlc_spec          → Read or update a spec artifact in the run directory
+sdlc_status        → Dashboard: tasks, approvals, next action
+sdlc_memory        → Recall or append episodic memory
+```
+
+---
+
+## Layer 2 — Deterministic Governance (Harness Core & Guardrails)
+
+**Directory:** `src/harness/`
+
+The harness is the deterministic reliability shell. It never trusts agent prose. It requires signed contracts and evidence for every task completion.
+
+<Frame>
+  <img src="/assets/rstack-layer2-sandbox-flow.svg" alt="RStack SDLC Execution Sandbox Flow Details" />
+</Frame>
+
+
+### `contracts.js` — Builder & Validator contract schemas
+
+**Builder contract required fields:**
+```
+task_id · agent · status · summary · files_modified · tests_run · risks · next_steps
+```
+
+**Builder status values:** `PASS | FAIL | BLOCKED | DONE_WITH_CONCERNS`
+
+**Validator contract required fields:**
+```
+task_id · validator · status · checks · issues · retry_recommendation
+```
+
+**Validator status values:** `PASS | FAIL`
+
+**Retry recommendations:** `none | retry_builder | ask_user | block`
+
+The `sdlc_validate` tool runs these checks plus enhanced evidence checks for passing tasks: meaningful `summary`, non-empty `tests_run`, `memory_summary.work_done`, `memory_summary.evidence`, and at least one evidence-backed `stage_summaries` entry per canonical stage listed in the task prompt.
+
+### `stages.js` — Canonical SDLC stages
+
+Fifteen canonical stages are **locked in order** by the test suite. Any reordering or deletion fails CI:
+
+```
+00-environment     → environment_report.json
+01-transcript      → transcript.json
+02-requirements    → requirements.json
+03-documentation   → documentation.json
+04-planning        → plan.json
+05-jira            → jira_tickets.json
+06-architecture    → system_design.json
+07-code            → code_report.json
+08-testing         → test_report.json
+09-deployment      → deployment_report.json
+10-summary         → summary.json
+11-feedback-loop   → feedback.json
+12-security-threat-model   → threat_model.json
+13-compliance-checker      → compliance_report.json
+14-cost-estimation         → cost_estimate.json
+```
+
+Stage artifacts live at: `.rstack/runs/<run_id>/artifacts/stages/<stage-id>/<artifact>`
+
+### `guardrails.js` — Task execution limits
+
+```js
+maxTaskAttempts:                        2
+maxDestructiveTaskAttempts:             1
+maxToolCallsPerTask:                    40
+maxMessagesPerTask:                     25
+requireBuilderContract:                 true
+requireValidatorContract:               true
+requireEvidenceForPass:                 true
+requireUserApprovalForDestructiveActions:           true
+requireUserApprovalForPublishDeployOrForcePush:     true
+```
+
+These are enforced by the harness — not by prompting. An agent that exceeds `maxToolCallsPerTask` is stopped regardless of its prose.
+
+<Frame>
+  <img src="/assets/rstack-layer2-harness-guardrails.svg" alt="RStack SDLC Harness Core Guardrail Policies Details" />
+</Frame>
+
+
+### `evidence.js` — Evidence ledger
+
+Every validator-grounded task result is appended as a structured entry to `evidence.jsonl`:
+
+```json
+{ "ts": "2024-05-25T10:30:00Z", "task_id": "004-implementation", "kind": "validation", "status": "PASS", "evidence": "tasks/004-implementation/validation.json" }
+```
+
+Required fields: `task_id · kind · status · evidence`. Events with missing fields are rejected at write time.
+
+### `run-state.js` — Run directory management
+
+Creates and validates the canonical directory structure for every run:
+
+```
+.rstack/runs/<run_id>/
+  artifacts/
+    stages/
+      00-environment/ … 14-cost-estimation/
+  tasks/
+    <task_id>/
+      prompt.md · builder.json · validation.json
+  events.jsonl
+  evidence.jsonl
+```
+
+### Security Guardrail Specifications
+
+We enforce deterministic path and command restrictions in real-time. This forms the defensive shield of Layer 2's Deterministic Governance:
+
+<Frame>
+  <img src="/assets/rstack-layer2-threats-compliance.svg" alt="RStack SDLC Threats and Compliance Safeguards Details" />
+</Frame>
+
+### Protected shell commands (blocked by `tool_call` hook)
+
+```
+rm -rf           git push         git push --force
+npm publish      pip publish      twine upload
+terraform apply  terraform destroy
+kubectl apply    kubectl delete
+helm install     helm upgrade     helm uninstall
+DROP TABLE       DELETE FROM      TRUNCATE
+```
+
+### Protected write paths
+
+```
+.env  .env.*  id_rsa  id_ed25519  id_dsa
+credentials.*  secrets.*  .npmrc  .pypirc  *.pem  *.key
+```
+
+### Episodic memory security (in `memory.js`)
+
+Before any episode is written to the memory store, two sanitisation passes run:
+
+**Secret pattern scrubbing:**
+```
+api_key / token / secret / password / authorization / bearer = <value>
+sk-[A-Za-z0-9]{12,}
+ak_[A-Za-z0-9]{12,}
+```
+
+**Prompt injection detection:**
+```
+ignore all previous instructions
+disregard prior rules
+system prompt:
+you are now ...
+must follow these instructions
+```
+
+Any episode containing these patterns is **rejected at write time** — it never reaches the memory store.
+
+---
+
+
+## Layer 3 — Gated Agentic Execution (Orchestrator, Builder & Validator Sandboxes)
+
+Below is a detailed, technical and business-focused visual breakdown of the **Gated Agentic Execution** phase. It maps out how the system prepares a task, delegates it to separate Builder and Validator sandboxes, audits deliverables against signed contracts, and logs results in our secure memory store.
+
+<Frame>
+  <img src="/assets/rstack-gated-agentic-execution.svg" alt="RStack Gated Agentic Execution Detailed Micro-Architecture Flow" />
+</Frame>
+
+### The 15-Stage Pipeline Lifecycle & Handoffs
+
+To secure the entire software-delivery lifecycle, the SDLC orchestrator enforces a structured 15-stage pipeline. The diagram below details every phase, their strict output JSON reports, automated audit handoff gates, and the final notification flow.
+
+<Frame>
+  <img src="/assets/rstack-layer3-pipeline-stages.svg" alt="RStack SDLC 15-Stage Pipeline Flow and Handoff Gates Diagram" />
+</Frame>
+
+### Execution Step-by-Step Breakdown
+
+#### Step 1: Context Assembly & Dispatch (`sdlc_build_next`)
+The **Harness Core** initializes the task and compiles its input `prompt.md` in a deterministic manner to prevent hallucination:
+* **Prompts Registry**: Merges the core operational standards with specialist instructions aligned with the active stage domain (e.g., `specialists/backend.md`).
+* **Episodic Recall**: Performs a fast lexical keyword query on the run's memory directory (`~/.rstack/memory/` and `.rstack/memory/`). It fetches the **top 3 matching episodes** with a similarity threshold of `minScore=0.08` to give historical context.
+* **Prerequisite Checking**: Inspects the `approvals.json` ledger to ensure all mandatory gates (e.g., requirements and architecture approvals) are met.
+
+#### Step 2: Isolated Builder Sandbox (Write-Active `sdlc_delegate`)
+To build the solution, the orchestrator spawns a **Builder Worker Subprocess** inside an isolated Pi workspace:
+* **Tool Constraints**: Equipped with write-enabled commands (`read, edit, write, bash, grep, find, ls`).
+* **Deliverable Action**: Implements code logic, creates corresponding automated test files, and ensures execution safety standards are followed.
+* **Contract Output**: Upon completion, writes a strictly structured `builder.json` contract recording the task ID, final PASS/FAIL status, summary of work done, files modified, test suites run, next-step handoffs, and reusable episodic memory keys.
+
+#### Step 3: Isolated Validator Sandbox (Read-Only `sdlc_delegate`)
+To eliminate confirmation bias, a **Validator Worker Subprocess** is spawned independently:
+* **Strict Sandbox Isolation**: Confined to **read-only tools** (`read, grep, find, ls, bash`). It has read access to the workspace and executes `bash` strictly to run test suites—it cannot write or edit files.
+* **Deliverable Action**: Audits the code changes, traces design features against business specs, and runs the automated test runner to verify test metrics pass.
+* **Contract Output**: Signs and saves a `validation.json` contract declaring the pass status and any detected issues.
+
+#### Step 4: Quality Contract Gating & Audit (`sdlc_validate`)
+The **Harness Core** intercepts validation contracts and conducts an on-disk physical audit:
+* **Physical Integrity Audit**: Verifies every file declared in the Builder's `files_modified` array actually exists on disk.
+* **Test Verification Check**: Assumes tests ran successfully and parses the test report evidence files.
+* **Double-Sign Matching**: Ensures both `builder.json` and `validation.json` structures match, are signed, and pass all verification rules.
+* **Routing Logic**:
+  * **PASS**: Commits the deliverables, advances the run to the next canonical stage, and logs success.
+  * **FAIL / BLOCKED**: Instantly registers a failure and **re-routes the task back to the Builder Sandbox** for fixes (capped at `maxTaskAttempts=2` to prevent infinite loops).
+
+#### Step 5: Evidence Ledgering & Memory Absorption
+Once validation succeeds, two immutable storage events trigger:
+* **Evidence Ledgering**: Appends a verified entry to `evidence.jsonl` linking the task and validator contract path for compliance auditing.
+* **Episodic Learning Absorption**: Translates the task outcomes into a reusable episode. Before writing, a **Secret Sanitiser & Injection Filter** scrubs secret keys, passwords, and prompt injection attempts. The clean, safe episode is written to `.rstack/memory/` and the global database to benefit future SDLC runs.
+
+---
+
+## Layer 4 — Dual Human Sign-off (HITL Gates)
+
+<Frame>
+  <img src="/assets/rstack-layer4-human-hitl.svg" alt="Layer 4 Dual Human-in-the-Loop Sign-off Gates Details" />
+</Frame>
+
+### Approval gates
+
+The `sdlc_approve` tool records human decisions as typed approval records:
+
+```json
+{
+  "id": "approval_001",
+  "artifact": "architecture.md",
+  "status": "APPROVED",
+  "approver": "human",
+  "timestamp": "2024-05-25T11:00:00Z"
+}
+```
+
+`sdlc_build_next` checks `approvals.json` before assembling each task packet. If required approvals are missing, the build is blocked with an actionable message.
+
+### Two run modes
+
+| Mode | Gate behavior |
+|---|---|
+| **Interactive** (default) | Requirements, architecture, and release gates enforced. Build blocked without approval. |
+| **Express** | Gates skipped for lightweight/prototype tasks. Not recommended for production delivery. |
+
+### Lifecycle stage gates
+
+| Stage | Required approvals |
+|---|---|
+| 003-architecture | `requirements.json`, `architecture.md` |
+| 004-implementation | `plan.md` (interactive mode) |
+| Release | `release-readiness.json` |
+| Destructive action | `destructive-action` artifact |
+
+---
+
+## Layer 5 — Delivery & Memory (Episodic Memory)
+
+**File:** `src/harness/memory.js`
+
+<Frame>
+  <img src="/assets/rstack-layer5-memory-delivery.svg" alt="Layer 5 Continuous Episodic Memory & Deployment Delivery Details" />
+</Frame>
+
+### Architecture
+
+```
+Write path (validator-gated)
+  sdlc_validate passes → episodeFromValidation() → sanitise → appendEpisode()
+  → .rstack/memory/<project-slug>/episodes.jsonl
+
+Read path (on sdlc_build_next)
+  recallEpisodes(query, topK=3) → lexical scoring → formatEpisodesForPrompt()
+  → injected into task packet (≤ 1800 chars)
+```
+
+### Episode schema (required fields)
+
+```
+episode_id · project_slug · run_id · task_id · task
+outcome · validator_status · quality_score
+created_at · evidence_paths
+```
+
+### Configuration (`.rstack/memory-config.json` or env)
+
+| Parameter | Default | Range |
+|---|---|---|
+| `backend` | `jsonl` | `jsonl` |
+| `retrieval` | `lexical` | `lexical` |
+| `topK` | `3` | 1–10 |
+| `maxInjectedChars` | `1800` | 400–8000 |
+| `minScore` | `0.08` | 0–1 |
+| `writePolicy` | `validator-approved-only` | `validator-approved-only`, `validation-attempts` |
+| `embeddingProvider` | `none` | `none` |
+
+### Memory locations
+
+```
+~/.rstack/memory/<project-slug>/episodes.jsonl    ← global (cross-session)
+.rstack/memory/<project-slug>/episodes.jsonl      ← project-local
+.rstack/memory/learnings.jsonl                    ← manual learnings (sdlc_memory append)
+```
+
+---
+
+## Layer 6 — Asset registry
+
+**Counts:** 196 agents · 156 skills · 72 plugins · 36 prompts
+
+### Agent hierarchy
+
+```
+agents/
+  core/
+    orchestrator.md    → Team lead, routes lifecycle, manages approval gates
+    builder.md         → Implementation (write permissions)
+    validator.md       → Review (read-only tools)
+  sdlc/
+    00-environment … 14-cost-estimation   (15 pipeline agents)
+  specialists/
+    backend · frontend · devops · QA · security · data · docs
+```
+
+### Plugin domain packs
+
+Each plugin bundles domain-specific agents, skills, and commands:
+
+```
+plugins/
+  backend-development/      api-builder · db-specialist · auth-specialist
+  frontend-design/          react · vue · css · accessibility
+  cicd-automation/          github-actions · circleci · jenkins
+  cloud-infrastructure/     aws · gcp · azure · terraform
+  security-threat-model/    stride · owasp · pen-test
+  compliance-checker/       gdpr · hipaa · soc2 · pci-dss
+  ... (66 more domain packs)
+```
+
+### Registry files (auto-generated)
+
+```
+.rstack/registry/
+  registry.json      ← combined manifest
+  agents.json        ← agent index with role/domain/tools
+  skills.json        ← skill index with tags
+  plugins.json       ← plugin index with domain map
+  routing.json       ← pipeline-stage → agent/plugin routing
+```
+
+---
+
+## Layer 7 — Run state layout
+
+```
+.rstack/
+  registry/              ← asset index (auto-generated)
+  memory/                ← episodic store (cross-run)
+  runs/
+    <run_id>/
+      manifest.json      ← run metadata, status, mode, rstack_version
+      context.md         ← goal + clarification answers
+      plan.md            ← delivery plan
+      tasks.json         ← task graph with acceptance criteria
+      approvals.json     ← human approval records
+      traceability.json  ← req → design → task → files → tests → evidence
+      events.jsonl       ← append-only tool call/result log
+      evidence.jsonl     ← append-only validator-grounded evidence
+      artifacts/
+        stages/
+          00-environment/environment_report.json
+          01-transcript/transcript.json
+          ... (one dir per canonical stage)
+      tasks/
+        <task_id>/
+          prompt.md      ← task specification with embedded agent context
+          builder.json   ← builder completion contract (required)
+          validation.json← validator review contract (required)
+```
+
+---
+
+## Operating standard
+
+Every agent in the system follows `agents/OPERATING-STANDARD.md`, which enforces:
+
+1. **Evidence before action** — No guessing. Every decision is grounded in files, commands, contracts, or explicit user answers.
+2. **Context hygiene** — Scout before read. No large file dumps. Select only the specialist needed.
+3. **User-friendly orchestration** — Ask before deleting, deploying, or choosing between materially different behaviors. Give a recommendation and 2–3 options.
+4. **Production quality bar** — Testable requirements · explicit trade-offs · no TODO stubs · error handling · security review · tests run · documentation exists.
+
+---
+
+## CI / release pipeline
+
+```
+npm test              → node --test tests/*.test.js (14 test files)
+npm run validate      → rstack-agents validate (460 assets, 0 errors)
+npm run lint          → ESLint v9 flat config
+npm audit             → dependency vulnerability check
+npm pack --dry-run    → package contents verification
+npm publish           → blocked by harness until sdlc_approve(release-readiness)
+```
+
+**GitHub Actions workflows:**
+- `ci.yml` — test + validate + audit on every push
+- `publish.yml` — gated npm publish on release tag
+- `validate-agents.yml` — agent frontmatter and duplicate-name checks
+
+---
+
+<CardGroup cols={2}>
+  <Card title="Back to Overview" icon="arrow-left" href="/">
+    Return to the main RStack SDLC introduction and overview.
+  </Card>
+  <Card title="Go to Quickstart" icon="bolt" href="/quickstart">
+    Get RStack running in under 5 minutes.
+  </Card>
+</CardGroup>

@@ -1,0 +1,139 @@
+---
+title: "Protected Actions"
+description: "Commands and file paths that RStack blocks during governed runs, and how to approve them."
+---
+
+## Overview
+
+During an active Pi native run, RStack intercepts every `tool_call` event. Certain destructive commands and sensitive file paths are **blocked by default** — they require explicit human approval before they can execute.
+
+This prevents AI agents from accidentally shipping code, destroying data, or leaking secrets.
+
+---
+
+## Blocked shell commands
+
+<AccordionGroup>
+  <Accordion title="Repository operations">
+    | Command | Why blocked |
+    |---|---|
+    | `git push` | Pushes code to remote without release approval |
+    | `git push --force` | Force-pushes, potentially rewriting history |
+    | `git push origin main` | Direct push to production branch |
+  </Accordion>
+
+  <Accordion title="Filesystem destruction">
+    | Command | Why blocked |
+    |---|---|
+    | `rm -rf` | Recursive deletion — irreversible |
+    | `rm -rf /` | System destruction |
+    | `rm -rf *` | Wipes current directory |
+  </Accordion>
+
+  <Accordion title="Package publishing">
+    | Command | Why blocked |
+    |---|---|
+    | `npm publish` | Publishes to npm registry |
+    | `npm publish --access public` | Public publish without release gate |
+    | `pip publish` / `twine upload` | Publishes to PyPI |
+  </Accordion>
+
+  <Accordion title="Infrastructure changes">
+    | Command | Why blocked |
+    |---|---|
+    | `terraform apply` | Applies infrastructure changes |
+    | `terraform destroy` | Destroys infrastructure |
+    | `kubectl apply` | Applies Kubernetes resources |
+    | `kubectl delete` | Deletes Kubernetes resources |
+    | `helm install` | Installs a Helm chart |
+    | `helm upgrade` | Upgrades a running release |
+    | `helm uninstall` | Removes a Helm release |
+  </Accordion>
+
+  <Accordion title="Database mutations">
+    | Command | Why blocked |
+    |---|---|
+    | `DROP TABLE` | Destroys a table — irreversible |
+    | `DROP DATABASE` | Destroys entire database |
+    | `DELETE FROM` (without `WHERE`) | Wipes all rows |
+    | `TRUNCATE` | Empties a table |
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Blocked write paths
+
+RStack also blocks writes to files that match these patterns — to prevent secret exfiltration or credential overwriting:
+
+```text
+.env
+.env.*          (.env.production, .env.local, etc.)
+id_rsa
+id_ed25519
+id_dsa
+credentials.*
+secrets.*
+.npmrc
+.pypirc
+*.pem
+*.key
+```
+
+---
+
+## Approving a protected action
+
+### Via `sdlc_approve`
+
+```text
+sdlc_approve(artifact="destructive-action", status="APPROVED")
+```
+
+This records a one-time approval in `approvals.json`. The agent can then execute the blocked action once.
+
+For release-level actions (deploys, publishes), approve the release artifact:
+
+```text
+sdlc_approve(artifact="release-readiness.json", status="APPROVED")
+```
+
+### Via environment variable
+
+To bypass all protections for a session (use with caution):
+
+```bash
+export RSTACK_ALLOW_DESTRUCTIVE=1
+pi ...
+```
+
+<Warning>
+  `RSTACK_ALLOW_DESTRUCTIVE=1` disables **all** protections for the entire session. Prefer `sdlc_approve` for targeted one-time approvals.
+</Warning>
+
+---
+
+## Protection scope
+
+| Adapter | `tool_call` gating | Blocked commands | Blocked paths |
+|---|---|---|---|
+| **Pi (native)** | ✅ Automatic | ✅ Enforced | ✅ Enforced |
+| **Claude Code** | ❌ Not available | ❌ Not enforced | ❌ Not enforced |
+| **Codex / Gemini** | ❌ Not available | ❌ Not enforced | ❌ Not enforced |
+| **Universal** | ❌ Not available | ❌ Not enforced | ❌ Not enforced |
+
+Protection via `tool_call` hooks is a Pi-native feature. For other adapters, the governance model relies on the agent following the operating standard in `agents/core/orchestrator.md` — which instructs it to ask before destructive actions.
+
+---
+
+## Audit log
+
+Every blocked and approved action is logged to the run event stream:
+
+```jsonl
+{"type":"tool_blocked","tool":"bash","command":"git push","reason":"destructive","timestamp":"..."}
+{"type":"approval","artifact":"destructive-action","status":"APPROVED","timestamp":"..."}
+{"type":"tool_allowed","tool":"bash","command":"git push","reason":"approved","timestamp":"..."}
+```
+
+This gives you a full audit trail of what was attempted and what was approved.
