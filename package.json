@@ -5,13 +5,34 @@
   "type": "module",
   "main": "src/index.js",
   "bin": {
-    "rstack-agents": "bin/rstack-agents.js"
+    "rstack-agents": "bin/rstack-agents.js",
+    "rstack-observer": "bin/rstack-observer.js"
   },
   "scripts": {
     "test": "npx tsx --test tests/*.test.js",
     "validate": "node bin/rstack-agents.js validate",
     "lint": "eslint src/ bin/ tests/",
-    "prepublishOnly": "npm test && npm run validate"
+    "prepublishOnly": "npm test && npm run validate",
+    "observer": "node bin/rstack-observer.js",
+    "observer:dev": "node --watch bin/rstack-observer.js",
+    "build:observer": "node scripts/build-observer.js",
+    "build:observer:win": "pkg bin/rstack-observer.js --target node18-win-x64 --output dist/rstack-observer-win.exe",
+    "build:observer:mac": "pkg bin/rstack-observer.js --target node18-macos-x64 --output dist/rstack-observer-macos",
+    "build:observer:linux": "pkg bin/rstack-observer.js --target node18-linux-x64 --output dist/rstack-observer-linux",
+    "build:all": "npm run build:observer"
+  },
+  "pkg": {
+    "scripts": [
+      "src/harness/observer.js",
+      "src/harness/reporter.js"
+    ],
+    "assets": [],
+    "targets": [
+      "node18-win-x64",
+      "node18-macos-x64",
+      "node18-linux-x64"
+    ],
+    "outputPath": "dist"
   },
   "keywords": [
     "pi-package",
@@ -68,7 +89,8 @@
     "@earendil-works/pi-coding-agent": "*"
   },
   "devDependencies": {
-    "eslint": "^9.0.0"
+    "eslint": "^9.0.0",
+    "pkg": "^5.8.1"
   },
   "bugs": {
     "url": "https://github.com/richard-devbot/SDLC-rstack/issues"
