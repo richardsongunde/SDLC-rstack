@@ -84,6 +84,45 @@ See [`docs/HARNESS.md`](docs/HARNESS.md) for the full runtime contract.
 
 ---
 
+## Enterprise Observability & Traceability Hub
+
+RStack features a high-fidelity, glassmorphic **Observability Hub & Real-time Traceability Explorer** designed for enterprise environments. It provides full visual reporting, specialist tracking, and webhook execution metrics for managers, developers, and compliance officers alike.
+
+### 📊 Real-Time HTML Observability Dashboard (`sdlc_dashboard`)
+Generate static HTML dashboards compiling raw runtime telemetry, sandbox events, and validation logs, launched instantly in your macOS system browser:
+```bash
+# Generate the glassmorphic hub and open in browser:
+pi run sdlc_dashboard
+```
+* **Specialist Agent Tracking**: Tracks exactly which packaged or project-local specialist agent (e.g., `agent.00-environment`) was assigned to execute the sandbox task.
+* **Sandbox Attempts & Modified Files**: Interactively inspect the attempt iteration numbers and expand lists of modified source file paths for every builder task.
+* **Memory Ledger Auditing KPI**: Displays a distinct, real-time cryptographic memory status (`🟢 SECURED` / `⚠️ COMPROMISED`) directly in the KPI header, auditing symmetric `HMAC-SHA256` signatures against historical record tampering.
+
+### 🔍 Interactive Traceability Explorer Tree
+Navigate to the **Traceability Explorer** tab in the dashboard card:
+* Maps high-level product requirements (from `specs/requirements.json`) directly to system architecture elements.
+* Tracks execution validation tasks, modified source code files, and final validation evidence.
+* Provides a chronological Pipeline Trace Ledger mapping active code paths, checkpoints, and PASS checks checklists.
+
+### 📂 Chronological CLI Event Tracing (`sdlc_trace`)
+Deep-dive into a single validation task with a LangSmith-style hierarchical event trace tree printed inside your console:
+```bash
+# Print tool calls, recall limits, cost logs, guardrail hits, and validations:
+pi run sdlc_trace --task_id "001-product-clarification"
+```
+
+### 🚀 Governed Multi-Channel Webhook Notifications
+Establish real-time team visibility across Slack, Microsoft Teams, and Discord. Simply configure the environment variable:
+```bash
+export RSTACK_SLACK_WEBHOOK="<webhook-url>"
+```
+RStack's zero-config auto-routing dynamically translates execution reports to match your channel's standard layouts:
+* **Slack**: Standard Block-kit payloads with metadata fields.
+* **Discord**: Converts notifications into high-fidelity embeds withhex-color status bars and footers.
+* **Microsoft Teams**: Converts validation checks checklists and attempt metrics into clean Office MessageCard structures.
+
+---
+
 ## Installation
 
 <details open>
