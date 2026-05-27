@@ -109,6 +109,7 @@
       "pages": [
         "reference/cli",
         "reference/pi-tools",
+        "reference/observability",
         "reference/configuration",
         "reference/protected-actions"
       ]

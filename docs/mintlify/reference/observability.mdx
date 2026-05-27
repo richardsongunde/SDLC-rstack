@@ -1,0 +1,190 @@
+---
+title: "Observability Hub"
+description: "Live dashboard, CLI event trace, metrics ledger, and multi-channel webhook notifications for every RStack run."
+---
+
+RStack ships a built-in observability stack that gives you real-time visibility into every stage, task, guardrail hit, and validation check — no external tooling required.
+
+<CardGroup cols={2}>
+  <Card title="sdlc_dashboard" icon="display" href="#sdlc_dashboard">
+    Live HTML dashboard with stage timeline and cumulative metrics.
+  </Card>
+  <Card title="sdlc_trace" icon="list-timeline" href="#sdlc_trace">
+    Chronological CLI event trace per task.
+  </Card>
+  <Card title="Webhook Notifications" icon="bell" href="#webhook-notifications">
+    Slack, Teams, and Discord with auto-format conversion.
+  </Card>
+  <Card title="metrics.json" icon="chart-bar" href="#metricsjson">
+    Cost, duration, and tool-call budget per stage.
+  </Card>
+</CardGroup>
+
+---
+
+## `sdlc_dashboard`
+
+Generates `dashboard.html` inside the run directory and starts a local HTTP server (default port `3005`) that auto-refreshes every 2 seconds.
+
+```text
+sdlc_dashboard()
+sdlc_dashboard(run_id="2024-05-25T10-00-00Z-my-run")
+```
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `run_id` | string | — | Target run (default: most recent) |
+
+**What the dashboard shows:**
+
+| Panel | Contents |
+|---|---|
+| Stage Execution Timeline | All 15 canonical stages with READY / PENDING / PASS / FAIL status pills |
+| Cumulative Time | Total elapsed milliseconds across the run |
+| API Cost Cap | `cumulative_cost_usd` from `metrics.json` |
+| Tool Call Buffer | `cumulative_tool_calls / 40` (max per task) |
+| Traceability Explorer | Link to inspect `traceability.json` |
+| Harness Guardrail Limits | Live view of enforced policy values |
+
+The dashboard reads from `/api/metrics` — a lightweight local endpoint that serves `metrics.json`, `tasks.json`, and `manifest.json` in a single response.
+
+**Output file:** `.rstack/runs/<run_id>/dashboard.html`
+
+---
+
+## `sdlc_trace`
+
+Prints a human-readable chronological event stream for the current or a specific task, compiled from `events.jsonl` and per-task `builder.json` / `validation.json`.
+
+```text
+sdlc_trace()
+sdlc_trace(task_id="003-architecture")
+```
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `task_id` | string | — | Target a specific task (default: most recent) |
+
+**Example output:**
+
+```
+[10:01:05] run_started              goal: "Build a weather app"
+[10:01:06] builder_task_prepared    task: 003-architecture · attempt: 1
+[10:01:07] tool_call                read: src/api/routes.js
+[10:01:08] tool_call                write: docs/architecture.md
+[10:01:09] memory_recalled          episodes: 2 matched
+[10:01:10] guardrail_triggered      maxToolCallsPerTask approaching (38/40)
+[10:01:11] task_validated           PASS · checks: 18/18
+[10:01:11] episode_memory_written   episode_abc123
+[10:01:11] stage_checkpoint_saved   003-architecture
+```
+
+**Known event types:**
+
+```
+run_started · task_started · builder_task_prepared · task_validated
+stage_completed · approval_gate · approval_gate_blocked · guardrail_triggered
+tool_call · tool_result · cost_recorded · quality_score_recorded
+memory_recalled · episode_memory_written · episode_memory_write_failed
+session_shutdown · clarification_requested · plan_created
+model_escalated · stage_checkpoint_saved · stage_checkpoint_reverted
+```
+
+---
+
+## Webhook Notifications
+
+Set one environment variable to activate notifications. RStack auto-detects the platform from the URL and converts the payload:
+
+```bash
+# Slack
+export RSTACK_SLACK_WEBHOOK="https://hooks.slack.com/services/..."
+
+# Discord (same variable — auto-converted)
+export RSTACK_SLACK_WEBHOOK="https://discord.com/api/webhooks/..."
+
+# Microsoft Teams (same variable — auto-converted)
+export RSTACK_SLACK_WEBHOOK="https://your-org.webhook.office.com/..."
+```
+
+### Notification events
+
+| Event | Trigger | Color |
+|---|---|---|
+| Stage START | `sdlc_start` initializes a stage | Blue |
+| Stage PASS | Validator contract approved | Green |
+| Stage FAIL | Harness contract check failed | Red |
+| Stage BLOCKED | Approval gate or guardrail blocked | Amber |
+| Stage APPROVAL\_PENDING | Waiting on `sdlc_approve` | Purple |
+| Task Execution Report | After every `sdlc_validate` | Green / Red |
+
+### Platform auto-conversion
+
+| Platform | Detection | Format |
+|---|---|---|
+| **Slack** | `hooks.slack.com` | Native Block Kit with color-coded attachment and field grid |
+| **Discord** | `discord.com` | `{ embeds: [] }` with hex color, description, and footer |
+| **Microsoft Teams** | `webhook.office.com` | Office `MessageCard` with `themeColor` and `sections` |
+
+### Task Execution Report payload
+
+The report fires after every `sdlc_validate` and includes:
+
+- Task ID and run ID
+- Final status (PASS / FAIL)
+- Tool call count
+- Guardrail hits
+- Memory actions (recalled / written / failed)
+- Full per-check validation checklist with PASS/FAIL per check name
+
+If the webhook is unset, RStack logs the payload to the console instead of dropping it silently.
+
+---
+
+## `metrics.json`
+
+`metrics.json` is updated by `updateRunMetrics()` after each task and read by the dashboard `/api/metrics` endpoint.
+
+**Location:** `.rstack/runs/<run_id>/metrics.json`
+
+**Schema:**
+
+```json
+{
+  "cumulative_duration_ms": 14250,
+  "cumulative_cost_usd": 0.0082,
+  "cumulative_tool_calls": 23,
+  "stage_elapsed_ms": {
+    "00-environment": 1200,
+    "01-transcript": 890,
+    "02-requirements": 3100
+  },
+  "stage_status": {
+    "00-environment": "PASS",
+    "01-transcript": "PASS",
+    "02-requirements": "PASS"
+  }
+}
+```
+
+| Field | Description |
+|---|---|
+| `cumulative_duration_ms` | Total wall-clock time across all completed tasks |
+| `cumulative_cost_usd` | Accumulated API cost (if cost events are emitted) |
+| `cumulative_tool_calls` | Total tool calls fired across all tasks |
+| `stage_elapsed_ms` | Per-stage elapsed time map |
+| `stage_status` | Per-stage final status map |
+
+---
+
+## RunReport
+
+`buildRunReport(runDir)` in `src/harness/reporter.js` compiles a typed `RunReport` from `events.jsonl`, `evidence.jsonl`, `tasks.json`, and per-task `validation.json`. It is used internally by `sdlc_trace` and `sdlc_dashboard`.
+
+The report surfaces:
+
+- Task count, PASS / FAIL breakdown
+- Guardrail hit count and types
+- Memory event totals (recalled, written, failed)
+- Evidence path index for compliance auditing
+- Per-stage status summary

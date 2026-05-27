@@ -1153,8 +1153,9 @@ export default function (pi: ExtensionAPI) {
         };
       }
       task.status = "IN_PROGRESS";
+      task._started_at = Date.now();
       await writeFile(tasksPath, JSON.stringify(taskState, null, 2));
-      await appendEvent(projectRoot, manifest.run_id, { type: "task_started", task_id: task.id });
+      await appendEvent(projectRoot, manifest.run_id, { type: "task_started", task_id: task.id, ts: new Date().toISOString() });
       const selected = registry.filter((item) => task.specialists?.includes(item.id));
       const prompt = await builderPrompt(projectRoot, task, selected, manifest.run_id);
       await writeFile(join(projectRoot, task.output_dir, "prompt.md"), prompt);
@@ -1213,15 +1214,21 @@ export default function (pi: ExtensionAPI) {
       await writeFile(join(projectRoot, task.output_dir, "validation.json"), JSON.stringify(validation, null, 2));
       task.status = status;
       await writeFile(tasksPath, JSON.stringify(taskState, null, 2));
+      // Compute real elapsed time from task _started_at stamp (written at sdlc_build_next)
+      const elapsedMs = task._started_at ? Math.max(0, Date.now() - Number(task._started_at)) : 0;
+      // Compute quality score from fraction of checks that passed
+      const passChecks = checks.filter((c: any) => c.status === "PASS").length;
+      const qualityScore = checks.length > 0 ? Math.round((passChecks / checks.length) * 100) / 100 : (status === "PASS" ? 0.9 : 0.25);
+
       await appendEvent(projectRoot, manifest.run_id, { type: "task_validated", task_id: task.id, status });
       if (builderContract) {
         if (builderContract.cost) {
-          await appendEvent(projectRoot, manifest.run_id, { type: "cost_recorded", task_id: task.id, cost: builderContract.cost });
+          await appendEvent(projectRoot, manifest.run_id, { type: "cost_recorded", task_id: task.id, usd: builderContract.cost, cost: builderContract.cost });
         }
       }
+      await appendEvent(projectRoot, manifest.run_id, { type: "quality_score_recorded", task_id: task.id, score: qualityScore, pass_checks: passChecks, total_checks: checks.length });
       if (status === "PASS") {
-        await appendEvent(projectRoot, manifest.run_id, { type: "quality_score_recorded", task_id: task.id, score: 0.9 });
-        await appendEvent(projectRoot, manifest.run_id, { type: "stage_completed", stage_id: task.id, elapsed_ms: 1200 });
+        await appendEvent(projectRoot, manifest.run_id, { type: "stage_completed", stage_id: task.id, task_id: task.id, elapsed_ms: elapsedMs });
         try {
           const runDir = join(runsDir(projectRoot), manifest.run_id);
           const checkpointSaved = await createStageCheckpoint(runDir, task.id);
@@ -1232,8 +1239,21 @@ export default function (pi: ExtensionAPI) {
           console.error("Failed to save stage checkpoint:", cpError);
         }
       } else {
-        await appendEvent(projectRoot, manifest.run_id, { type: "quality_score_recorded", task_id: task.id, score: 0.25 });
-        await appendEvent(projectRoot, manifest.run_id, { type: "guardrail_triggered", limit: "maxTaskAttempts", value: 1 });
+        // Emit guardrail event with canonical field names expected by buildRunReport
+        const runDir = join(runsDir(projectRoot), manifest.run_id);
+        const runEvents = await readJsonl(join(runDir, "events.jsonl"));
+        const attemptCount = runEvents.filter((e: any) => e.type === "task_started" && e.task_id === task.id).length;
+        const maxAttempts = DEFAULT_HARNESS_GUARDRAILS.maxTaskAttempts ?? 2;
+        await appendEvent(projectRoot, manifest.run_id, {
+          type: "guardrail_triggered",
+          limit_name: "maxTaskAttempts",
+          current_value: attemptCount,
+          limit_value: maxAttempts,
+          task_id: task.id,
+          // Legacy aliases for backward compat with sdlc_trace CLI renderer
+          limit: "maxTaskAttempts",
+          value: attemptCount,
+        });
       }
       await appendEvidenceEvent(join(runsDir(projectRoot), manifest.run_id), {
         task_id: task.id,
@@ -1533,7 +1553,10 @@ export default function (pi: ExtensionAPI) {
           lines.push(`  │  └─ Result [${isErrorSymbol}]: ${truncatedRes}`);
         }
         if (e.type === "guardrail_triggered") {
-          lines.push(`  ├─ ⚠️  Guardrail Triggered: ${e.limit} = ${e.value}`);
+          const limitName = e.limit_name ?? e.limit ?? "unknown";
+          const currentVal = e.current_value ?? e.value ?? "?";
+          const limitVal = e.limit_value != null ? ` / ${e.limit_value}` : "";
+          lines.push(`  ├─ ⚠️  Guardrail Triggered: ${limitName} = ${currentVal}${limitVal}`);
         }
         if (e.type === "cost_recorded") {
           lines.push(`  ├─ 💵 Cost Recorded: $${e.cost}`);
