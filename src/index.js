@@ -12,3 +12,4 @@ export { appendEpisode, appendLearning, formatEpisodesForPrompt, projectMemoryDi
 export { sendSlackNotification, formatSlackStageMessage } from './harness/notifications.js';
 export { updateRunMetrics } from './harness/run-state.js';
 export { startDashboardServer } from './harness/dashboard.js';
+export { generateRunReport } from './harness/reporter.js';
