@@ -194,11 +194,16 @@ async function buildSnapshot(projectRoot, runId) {
   }
 
   // Per-task tool call counts
+  // Pi extension emits tool_call without task_id — fall back to most-recently-started task
   const taskToolCalls = {};
   let activeTask = null;
   for (const ev of events) {
     if (ev.type === 'task_started' || ev.type === 'builder_task_prepared') activeTask = ev.task_id;
-    if (ev.type === 'tool_call' && activeTask) taskToolCalls[activeTask] = (taskToolCalls[activeTask] ?? 0) + 1;
+    if (ev.type === 'task_validated') activeTask = null;
+    if (ev.type === 'tool_call') {
+      const tid = ev.task_id ?? activeTask;
+      if (tid) taskToolCalls[tid] = (taskToolCalls[tid] ?? 0) + 1;
+    }
   }
 
   return {
@@ -519,7 +524,10 @@ function applySnapshot(snap) {
     if (ev.task_id) allTaskEvents[ev.task_id].push(ev);
     if (ev.type === 'task_started' || ev.type === 'builder_task_prepared') activeTaskId = ev.task_id;
     if (ev.type === 'task_validated') activeTaskId = null;
-    if (ev.type === 'tool_call' && ev.task_id) taskToolCalls[ev.task_id] = (taskToolCalls[ev.task_id] ?? 0) + 1;
+    if (ev.type === 'tool_call') {
+      const tid = ev.task_id ?? activeTaskId;
+      if (tid) taskToolCalls[tid] = (taskToolCalls[tid] ?? 0) + 1;
+    }
   }
   renderAll();
   // Render historical events
@@ -643,8 +651,12 @@ function appendLiveEvent(ev) {
   // Update per-task counters
   if (ev.type === 'task_started' || ev.type === 'builder_task_prepared') activeTaskId = ev.task_id;
   if (ev.type === 'task_validated') activeTaskId = null;
-  if (ev.type === 'tool_call' && ev.task_id) taskToolCalls[ev.task_id] = (taskToolCalls[ev.task_id] ?? 0) + 1;
-  if (ev.task_id) { if (!allTaskEvents[ev.task_id]) allTaskEvents[ev.task_id] = []; allTaskEvents[ev.task_id].push(ev); }
+  if (ev.type === 'tool_call') {
+    const tid = ev.task_id ?? activeTaskId;
+    if (tid) taskToolCalls[tid] = (taskToolCalls[tid] ?? 0) + 1;
+  }
+  const evTid = ev.task_id ?? (ev.type === 'tool_call' || ev.type === 'tool_result' ? activeTaskId : null);
+  if (evTid) { if (!allTaskEvents[evTid]) allTaskEvents[evTid] = []; allTaskEvents[evTid].push({...ev, task_id: evTid}); }
 
   // Update task status in state
   if (ev.type === 'task_validated' && ev.task_id) {
