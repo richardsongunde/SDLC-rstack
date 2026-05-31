@@ -1,11 +1,12 @@
 import { createServer }       from 'node:http';
 import { existsSync, readFileSync } from 'node:fs';
-import { readFile, readdir, mkdir } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { join, resolve }      from 'node:path';
 import { spawn }              from 'node:child_process';
 import { evaluateAlerts, plainLanguageSummary } from './alert-engine.js';
 import { readApprovals, resolveApproval, pendingApprovals, approvalSummary } from './approval-queue.js';
 import { knownProjectRoots } from './project-registry.js';
+import { CANONICAL_SDLC_STAGES } from './stages.js';
 
 // owner: RStack developed by Richardson Gunde
 
@@ -45,6 +46,31 @@ function readJsonlSync(filePath) {
 
 async function readJson(filePath, fallback = null) {
   try { return JSON.parse(await readFile(filePath, 'utf8')); } catch { return fallback; }
+}
+
+async function enrichTasks(projectRoot, runId, tasks) {
+  const tasksDir = join(projectRoot, '.rstack', 'runs', runId, 'tasks');
+  return Promise.all((tasks ?? []).map(async (task) => {
+    const taskDir = join(tasksDir, task.id);
+    const [builder, validation, promptText] = await Promise.all([
+      readJson(join(taskDir, 'builder.json'), null),
+      readJson(join(taskDir, 'validation.json'), null),
+      readFile(join(taskDir, 'prompt.md'), 'utf8').catch(() => ''),
+    ]);
+    return {
+      ...task,
+      builder,
+      validation,
+      prompt_preview: promptText ? promptText.slice(0, 700) : '',
+      agent_name: builder?.agent ?? task.agent ?? task.specialist ?? 'rstack-agent',
+      risk_count: Array.isArray(builder?.risks) ? builder.risks.length : 0,
+      evidence_count: Array.isArray(validation?.checks) ? validation.checks.length : 0,
+    };
+  }));
+}
+
+function inferHost(manifest) {
+  return manifest?.host ?? manifest?.framework ?? manifest?.runtime ?? manifest?.mode ?? 'unknown';
 }
 
 function openBrowser(url) {
@@ -157,9 +183,10 @@ async function getRunsForRoot(projectRoot) {
       readJson(join(runDir, 'metrics.json'), {}),
       readJson(join(runDir, 'tasks.json'), null),
     ]);
-    const tasks = Array.isArray(tasksRaw)
+    const rawTasks = Array.isArray(tasksRaw)
       ? tasksRaw
       : Array.isArray(tasksRaw?.tasks) ? tasksRaw.tasks : [];
+    const tasks = await enrichTasks(projectRoot, runId, rawTasks);
     const events = readJsonlSync(join(runDir, 'events.jsonl'));
 
     // Per-minute activity timeline — used for sparkline + drill-down
@@ -167,8 +194,9 @@ async function getRunsForRoot(projectRoot) {
 
     // Derive status from events when manifest lacks completed_at
     const derivedStatus = deriveRunStatus(manifest, events);
+    const host = inferHost(manifest);
 
-    return { runId, projectRoot, manifest, metrics, tasks, events, activityTimeline, derivedStatus };
+    return { runId, projectRoot, manifest, metrics, tasks, events, activityTimeline, derivedStatus, host };
   }));
 }
 
@@ -190,6 +218,55 @@ async function getAllApprovals(projectRoot) {
   const roots = await knownProjectRoots(projectRoot);
   const perRoot = await Promise.all(roots.map(r => readApprovals(r)));
   return perRoot.flat();
+}
+
+function buildStageMatrix(runs) {
+  return CANONICAL_SDLC_STAGES.map((stage) => {
+    const runStates = runs.map((run) => {
+      const task = (run.tasks ?? []).find(t =>
+        t.id === stage.id ||
+        t.stage_id === stage.id ||
+        (t.stage_artifacts ?? []).some(a => a.stage_id === stage.id)
+      );
+      const status = task?.status ?? 'READY';
+      const validationStatus = task?.validation?.status ?? null;
+      return {
+        runId: run.runId,
+        status,
+        taskId: task?.id ?? null,
+        agent: task?.agent_name ?? stage.agent,
+        validationStatus,
+        riskCount: task?.risk_count ?? 0,
+      };
+    });
+    return {
+      ...stage,
+      runs: runStates,
+      pass: runStates.filter(r => r.status === 'PASS').length,
+      fail: runStates.filter(r => r.status === 'FAIL').length,
+      active: runStates.filter(r => r.status === 'IN_PROGRESS').length,
+      ready: runStates.filter(r => r.status === 'READY' || !r.status).length,
+    };
+  });
+}
+
+function buildAgentWork(runs) {
+  return runs.flatMap((run) => (run.tasks ?? []).map((task) => ({
+    runId: run.runId,
+    goal: run.manifest?.goal ?? '',
+    host: run.host,
+    projectRoot: run.projectRoot,
+    taskId: task.id,
+    title: task.title ?? task.id,
+    status: task.status ?? 'READY',
+    agent: task.agent_name ?? 'rstack-agent',
+    summary: task.builder?.summary ?? task.description ?? '',
+    decisions: task.builder?.memory_summary?.decisions ?? [],
+    risks: task.builder?.risks ?? [],
+    nextSteps: task.builder?.next_steps ?? [],
+    validationChecks: task.validation?.checks ?? [],
+    promptPreview: task.prompt_preview ?? '',
+  }))).sort((a, b) => `${b.runId}:${b.taskId}`.localeCompare(`${a.runId}:${a.taskId}`)).slice(0, 160);
 }
 
 async function buildFullState(projectRoot) {
@@ -351,14 +428,20 @@ async function buildFullState(projectRoot) {
 
   const alertsState = { runs, pendingApprovals: pending.length };
   const alerts = evaluateAlerts(alertsState);
+  const stageMatrix = buildStageMatrix(runs);
+  const agentWork = buildAgentWork(runs);
+  const tokenTotal = runs.reduce((sum, run) => sum + Number(run.metrics?.cumulative_tokens ?? run.metrics?.total_tokens ?? 0), 0);
 
   return {
     kind: 'snapshot',
+    product: 'RStack Command Center',
+    stateRoot: join(projectRoot, '.rstack'),
     runs,
     activeRuns: activeRuns.map(r => r.runId),
     todayCount: todayRuns.length,
     totalRuns: runs.length,
     totalCost,
+    tokenTotal,
     frameworks,
     feed,
     approvals: mergedApprovals,
@@ -366,6 +449,8 @@ async function buildFullState(projectRoot) {
     pendingApprovals: pending,
     alerts,
     traceMap,
+    stageMatrix,
+    agentWork,
     ts: new Date().toISOString(),
   };
 }
@@ -497,7 +582,7 @@ function dashboardHtml(port) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>RStack Business Hub</title>
+<title>RStack Command Center</title>
 <style>
 :root{
   --bg:#090e18;--surface:#0f1623;--panel:#141d2e;--panel2:#1a2438;
@@ -697,6 +782,40 @@ nav{flex-shrink:0;background:var(--surface);border-bottom:1px solid var(--border
 .fw-table tr:last-child td{border-bottom:none}
 .fw-table td:not(:first-child){font-family:var(--m);font-size:11px}
 
+/* ── Command Center ── */
+.command-hero{display:grid;grid-template-columns:1.3fr .7fr;gap:16px;margin-bottom:16px}
+.command-title{font-size:34px;font-weight:900;letter-spacing:-.055em;line-height:1.02;margin-bottom:10px}
+.command-title span{color:var(--accent2)}
+.command-sub{color:var(--dim);font-size:14px;max-width:760px}
+.command-shell{display:grid;grid-template-columns:290px 1fr 360px;gap:14px;min-height:660px}
+@media(max-width:1250px){.command-shell{grid-template-columns:1fr}.command-hero{grid-template-columns:1fr}}
+.command-panel{background:linear-gradient(180deg,rgba(26,36,56,.96),rgba(15,22,35,.96));border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:0 24px 90px rgba(0,0,0,.24)}
+.command-panel-h{padding:13px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
+.project-tile{padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s,border-color .15s}
+.project-tile:hover{background:rgba(255,255,255,.035)}
+.project-name{font-weight:800;color:var(--text);font-size:13px;margin-bottom:4px}
+.project-meta{font-size:10.5px;color:var(--dim);font-family:var(--m)}
+.stage-board{display:grid;grid-template-columns:repeat(5,minmax(140px,1fr));gap:10px;padding:14px}
+@media(max-width:1500px){.stage-board{grid-template-columns:repeat(3,minmax(140px,1fr))}}
+.stage-card{background:rgba(9,14,24,.74);border:1px solid var(--border);border-radius:14px;padding:12px;min-height:118px;position:relative;overflow:hidden}
+.stage-card::after{content:'';position:absolute;inset:auto 0 0 0;height:3px;background:linear-gradient(90deg,var(--accent),var(--info));opacity:.65}
+.stage-code{font-family:var(--m);font-size:10px;color:var(--accent2);font-weight:800;margin-bottom:5px}
+.stage-title{font-size:13px;font-weight:800;margin-bottom:9px}
+.stage-stats{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.stage-runs{display:flex;gap:3px;align-items:center;flex-wrap:wrap}
+.run-dot{width:9px;height:9px;border-radius:50%;background:var(--dim2);box-shadow:0 0 0 1px rgba(255,255,255,.08)}
+.run-dot.pass{background:var(--pass)}.run-dot.fail{background:var(--fail)}.run-dot.active{background:var(--accent2)}.run-dot.ready{background:var(--dim2)}
+.agent-stack{padding:12px;display:flex;flex-direction:column;gap:10px;max-height:620px;overflow:auto}
+.agent-card{background:rgba(9,14,24,.7);border:1px solid var(--border);border-radius:14px;padding:12px;cursor:pointer;transition:border-color .15s,transform .15s}
+.agent-card:hover{border-color:var(--accent);transform:translateY(-1px)}
+.agent-head{display:flex;justify-content:space-between;gap:8px;margin-bottom:7px}.agent-name{font-weight:900;color:var(--text);font-size:12px}.agent-task{font-size:11px;color:var(--dim);font-family:var(--m)}
+.agent-summary{font-size:11.5px;color:var(--dim);line-height:1.45;max-height:48px;overflow:hidden}
+.agent-detail{position:fixed;right:0;top:52px;bottom:0;width:520px;background:var(--surface);border-left:1px solid var(--border2);z-index:40;transform:translateX(100%);transition:transform .22s ease;box-shadow:-20px 0 60px rgba(0,0,0,.45);display:flex;flex-direction:column}
+.agent-detail.open{transform:translateX(0)}
+.agent-detail-body{padding:18px;overflow:auto;display:flex;flex-direction:column;gap:14px}
+.json-chip{font-family:var(--m);font-size:10.5px;color:var(--info);background:var(--info-bg);border:1px solid rgba(59,130,246,.25);padding:4px 7px;border-radius:6px}
+.thinking-list{display:flex;flex-direction:column;gap:6px}.thinking-item{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:9px 10px;font-size:12px;color:var(--text)}
+
 /* ── Empty state ── */
 .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;
   padding:60px 20px;gap:12px;color:var(--dim);text-align:center}
@@ -713,9 +832,10 @@ nav{flex-shrink:0;background:var(--surface);border-bottom:1px solid var(--border
 <body>
 <div id="app">
   <nav>
-    <div class="nav-brand">RStack <span>Business Hub</span></div>
+    <div class="nav-brand">RStack <span>Command Center</span></div>
     <div class="nav-tabs">
-      <button class="nav-tab active" data-tab="overview">Overview</button>
+      <button class="nav-tab active" data-tab="command">Command Center</button>
+      <button class="nav-tab" data-tab="overview">Overview</button>
       <button class="nav-tab" data-tab="feed">Live Feed</button>
       <button class="nav-tab" data-tab="approvals">Approvals <span id="tab-approval-count"></span></button>
       <button class="nav-tab" data-tab="alerts">Alerts <span id="tab-alert-count"></span></button>
@@ -732,8 +852,36 @@ nav{flex-shrink:0;background:var(--surface);border-bottom:1px solid var(--border
     </div>
   </nav>
 
+  <!-- COMMAND CENTER -->
+  <div class="tab-content active scroll" id="tab-command">
+    <div class="command-hero">
+      <div class="command-panel" style="padding:22px 24px">
+        <div class="command-title">AI software team <span>mission control</span></div>
+        <div class="command-sub">A host-agnostic SDLC board over <code id="cc-state-root">.rstack</code>. Track every project, run, agent, hook, guardrail, token, cost signal, and 15-stage pipeline from one place.</div>
+      </div>
+      <div class="kpi-row" style="margin:0;grid-template-columns:repeat(2,1fr)">
+        <div class="kpi"><div class="kpi-val violet" id="cc-agents">—</div><div class="kpi-label">Agent Work Items</div></div>
+        <div class="kpi"><div class="kpi-val blue" id="cc-tokens">—</div><div class="kpi-label">Tokens Recorded</div></div>
+      </div>
+    </div>
+    <div class="command-shell">
+      <section class="command-panel">
+        <div class="command-panel-h"><span>Projects and sessions</span><span id="cc-project-count">0</span></div>
+        <div id="cc-projects"></div>
+      </section>
+      <section class="command-panel">
+        <div class="command-panel-h"><span>15-stage SDLC pipeline</span><span>live board</span></div>
+        <div class="stage-board" id="cc-stage-board"></div>
+      </section>
+      <section class="command-panel">
+        <div class="command-panel-h"><span>Agent work stream</span><span>builder.json</span></div>
+        <div class="agent-stack" id="cc-agent-stack"></div>
+      </section>
+    </div>
+  </div>
+
   <!-- OVERVIEW -->
-  <div class="tab-content active scroll" id="tab-overview">
+  <div class="tab-content scroll" id="tab-overview">
     <div class="kpi-row" id="kpi-row">
       <div class="kpi"><div class="kpi-val orange" id="kpi-active">—</div><div class="kpi-label">Active Runs</div></div>
       <div class="kpi"><div class="kpi-val blue" id="kpi-today">—</div><div class="kpi-label">Runs Today</div></div>
@@ -807,6 +955,18 @@ nav{flex-shrink:0;background:var(--surface);border-bottom:1px solid var(--border
       <div class="card-hdr">Framework / Team Breakdown</div>
       <div class="card-body" id="team-table"></div>
     </div>
+  </div>
+
+  <!-- AGENT DETAIL SLIDE-OUT PANEL -->
+  <div id="agent-detail-panel" class="agent-detail">
+    <div class="rdp-hdr">
+      <div style="flex:1">
+        <div style="font-size:10px;color:var(--dim);font-family:var(--m)" id="adp-task-id">—</div>
+        <h2 id="adp-agent">Agent Work</h2>
+      </div>
+      <button class="rdp-close" onclick="closeAgentDetail()">&times;</button>
+    </div>
+    <div class="agent-detail-body" id="adp-body"></div>
   </div>
 
   <!-- RUN DETAIL SLIDE-OUT PANEL -->
@@ -886,6 +1046,7 @@ function connect() {
 // ── Apply state ───────────────────────────────────────────────────────────────
 function applyState(s) {
   STATE = s;
+  renderCommandCenter();
   renderKPIs();
   renderOverviewFeed();
   renderActiveRuns();
@@ -897,6 +1058,111 @@ function applyState(s) {
   renderHistory();
   renderTraceability();
   renderTeam();
+}
+
+// ── Command Center ───────────────────────────────────────────────────────────
+function renderCommandCenter() {
+  if (!STATE) return;
+  setText('cc-state-root', STATE.stateRoot ?? '.rstack');
+  setText('cc-agents', (STATE.agentWork ?? []).length);
+  setText('cc-tokens', compactNumber(STATE.tokenTotal ?? 0));
+  renderCommandProjects();
+  renderCommandStages();
+  renderCommandAgents();
+}
+
+function renderCommandProjects() {
+  const el = document.getElementById('cc-projects');
+  if (!el) return;
+  const projects = {};
+  for (const run of STATE.runs ?? []) {
+    const key = run.projectRoot ?? 'unknown';
+    const name = key.split('/').filter(Boolean).pop() || key;
+    const bucket = projects[key] ??= { name, path: key, runs: 0, active: 0, cost: 0, pass: 0, fail: 0, last: '' };
+    bucket.runs++;
+    if ((STATE.activeRuns ?? []).includes(run.runId)) bucket.active++;
+    bucket.cost += Number(run.metrics?.cumulative_cost_usd ?? 0) || 0;
+    bucket.last = bucket.last > run.runId ? bucket.last : run.runId;
+    for (const task of run.tasks ?? []) {
+      if (task.status === 'PASS') bucket.pass++;
+      if (task.status === 'FAIL') bucket.fail++;
+    }
+  }
+  const rows = Object.values(projects).sort((a, b) => b.last.localeCompare(a.last));
+  setText('cc-project-count', rows.length);
+  el.innerHTML = rows.length ? rows.map(p => '<div class="project-tile">' +
+    '<div class="project-name">' + esc(p.name) + '</div>' +
+    '<div class="project-meta">' + p.runs + ' runs · ' + p.active + ' active · $' + p.cost.toFixed(4) + '</div>' +
+    '<div style="margin-top:7px;display:flex;gap:5px"><span class="pill pass">' + p.pass + ' pass</span><span class="pill fail">' + p.fail + ' fail</span></div>' +
+    '</div>').join('') : '<div class="feed-empty">No projects found in .rstack yet</div>';
+}
+
+function renderCommandStages() {
+  const el = document.getElementById('cc-stage-board');
+  if (!el) return;
+  const stages = STATE.stageMatrix ?? [];
+  el.innerHTML = stages.map(stage => {
+    const dots = (stage.runs ?? []).slice(0, 28).map(r => '<span title="' + esc(r.runId) + ' · ' + esc(r.status) + '" class="run-dot ' + statusDot(r.status) + '"></span>').join('');
+    return '<div class="stage-card">' +
+      '<div class="stage-code">' + esc(stage.id) + '</div>' +
+      '<div class="stage-title">' + esc(stage.title) + '</div>' +
+      '<div class="stage-stats"><span class="pill pass">' + stage.pass + ' pass</span><span class="pill fail">' + stage.fail + ' fail</span><span class="pill active">' + stage.active + ' active</span></div>' +
+      '<div class="stage-runs">' + (dots || '<span style="color:var(--dim);font-size:11px">No runs</span>') + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+function renderCommandAgents() {
+  const el = document.getElementById('cc-agent-stack');
+  if (!el) return;
+  const work = (STATE.agentWork ?? []).slice(0, 40);
+  el.innerHTML = work.length ? work.map((item, idx) => '<div class="agent-card" onclick="openAgentDetail(' + idx + ')">' +
+    '<div class="agent-head"><div><div class="agent-name">' + esc(item.agent) + '</div><div class="agent-task">' + esc(item.taskId) + '</div></div><span class="pill ' + pillClass(item.status) + '">' + esc(item.status) + '</span></div>' +
+    '<div class="agent-summary">' + esc(item.summary || item.promptPreview || item.goal || 'No summary yet') + '</div>' +
+    '<div style="margin-top:8px;display:flex;gap:5px;flex-wrap:wrap"><span class="json-chip">builder.json</span><span class="json-chip">validation.json</span>' + (item.host ? '<span class="json-chip">' + esc(item.host) + '</span>' : '') + '</div>' +
+    '</div>').join('') : '<div class="feed-empty">No agent contracts found yet</div>';
+}
+
+function openAgentDetail(index) {
+  const item = (STATE.agentWork ?? [])[index];
+  if (!item) return;
+  document.getElementById('adp-task-id').textContent = item.runId.slice(-18) + ' · ' + item.taskId;
+  document.getElementById('adp-agent').textContent = item.agent;
+  const decisions = item.decisions?.length ? item.decisions : ['No decisions recorded yet'];
+  const risks = item.risks?.length ? item.risks : ['No risks recorded'];
+  const checks = item.validationChecks?.slice(0, 14) ?? [];
+  document.getElementById('adp-body').innerHTML =
+    '<div class="card"><div class="card-hdr">Work summary</div><div class="card-body">' + esc(item.summary || item.promptPreview || 'No summary recorded') + '</div></div>' +
+    '<div class="card"><div class="card-hdr">Structured agent thinking</div><div class="card-body thinking-list">' + decisions.map(d => '<div class="thinking-item">' + esc(d) + '</div>').join('') + '</div></div>' +
+    '<div class="card"><div class="card-hdr">Risks</div><div class="card-body thinking-list">' + risks.map(r => '<div class="thinking-item">' + esc(r) + '</div>').join('') + '</div></div>' +
+    '<div class="card"><div class="card-hdr">Validation checks</div><div class="card-body thinking-list">' + (checks.length ? checks.map(c => '<div class="thinking-item"><span class="pill ' + pillClass(c.status) + '">' + esc(c.status) + '</span> ' + esc(c.name) + '<div style="color:var(--dim);font-size:11px;margin-top:4px">' + esc(c.evidence ?? '') + '</div></div>').join('') : '<div class="thinking-item">No validation checks found</div>') + '</div></div>';
+  document.getElementById('agent-detail-panel').classList.add('open');
+}
+
+function closeAgentDetail() {
+  document.getElementById('agent-detail-panel').classList.remove('open');
+}
+
+function statusDot(status) {
+  if (status === 'PASS') return 'pass';
+  if (status === 'FAIL') return 'fail';
+  if (status === 'IN_PROGRESS') return 'active';
+  return 'ready';
+}
+
+function pillClass(status) {
+  const s = String(status ?? '').toLowerCase();
+  if (s.includes('pass') || s.includes('done') || s.includes('approved')) return 'pass';
+  if (s.includes('fail') || s.includes('reject')) return 'fail';
+  if (s.includes('progress') || s.includes('active')) return 'active';
+  return 'warn';
+}
+
+function compactNumber(value) {
+  const n = Number(value) || 0;
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+  return String(n);
 }
 
 // ── KPIs ──────────────────────────────────────────────────────────────────────
@@ -938,7 +1204,7 @@ function renderOverviewFeed() {
 
 function feedItemHtml(f) {
   const ts = f.ts ? f.ts.replace('T',' ').slice(0,16) : '';
-  const proj = f.projectRoot ? f.projectRoot.replace(/.*\/([^/]+)$/, '$1') : '';
+  const proj = f.projectRoot ? f.projectRoot.split('/').filter(Boolean).pop() : '';
   const goalStr = f.goal ? ' · ' + esc(f.goal).slice(0,40) : '';
   const runStr  = f.runId ? esc(f.runId.slice(-10)) + (proj ? ' [' + esc(proj) + ']' : '') + goalStr : '';
   return \`<div class="feed-item">
@@ -1122,7 +1388,7 @@ function renderHistory() {
     const failed   = tasks.filter(t => t.status === 'FAIL').length;
     const cost     = (r.metrics?.cumulative_cost_usd ?? 0).toFixed(4);
     const created  = r.manifest?.created_at ? r.manifest.created_at.replace('T',' ').slice(0,16) : '—';
-    const projLabel = r.projectRoot ? r.projectRoot.replace(/.*\/([^/]+)$/, '$1') : '';
+    const projLabel = r.projectRoot ? r.projectRoot.split('/').filter(Boolean).pop() : '';
     const fw        = r.manifest?.framework ?? r.manifest?.mode ?? '';
     const totalTc   = (r.activityTimeline ?? []).reduce((s, m) => s + m.toolCalls, 0);
     const spark     = miniSparkline(r.activityTimeline ?? []);

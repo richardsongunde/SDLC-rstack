@@ -152,7 +152,7 @@ function broadcast(msg) {
 
 function startTailing(eventsPath) {
   if (watchedPath && watchedPath !== eventsPath) {
-    try { unwatchFile(watchedPath); } catch {}
+    try { unwatchFile(watchedPath); } catch { /* watcher may already be detached */ }
     if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
   }
   watchedPath = eventsPath;
@@ -811,7 +811,7 @@ const server = createServer(async (req, res) => {
   res.end(dashboardHtml(PORT));
 });
 
-server.on('upgrade', async (req, socket, head) => {
+server.on('upgrade', async (req, socket, _head) => {
   if (req.headers.upgrade?.toLowerCase() !== 'websocket') { socket.destroy(); return; }
   if (!wsHandshake(req, socket)) return;
 

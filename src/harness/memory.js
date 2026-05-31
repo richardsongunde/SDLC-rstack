@@ -433,7 +433,7 @@ async function compactEpisodesInternal(memoryDir, options = {}) {
 
   const seen = new Map();
   for (const line of episodeLines) {
-    try { const ep = JSON.parse(line); if (ep.episode_id) seen.set(ep.episode_id, line); } catch {}
+    try { const ep = JSON.parse(line); if (ep.episode_id) seen.set(ep.episode_id, line); } catch { /* skip malformed episode memory line */ }
   }
   const deduped = [...seen.values()];
   const boundedCompaction = compactionLines.slice(-3);

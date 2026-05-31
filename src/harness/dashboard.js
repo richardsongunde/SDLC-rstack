@@ -18,7 +18,7 @@ export function startDashboardServer(projectRoot, runId, port = 3005) {
         const report = await runMemoryDiagnostics(projectRoot, runId);
         res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
         res.end(JSON.stringify(report));
-      } catch (err) {
+      } catch (_err) {
         res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
         res.end(JSON.stringify({ episode_count: 0, store_size_kb: 0, signature_failures: [], recall_hit_rate: null }));
       }
@@ -36,13 +36,13 @@ export function startDashboardServer(projectRoot, runId, port = 3005) {
       let manifest = {};
 
       if (existsSync(metricsPath)) {
-        try { metrics = JSON.parse(await readFile(metricsPath, 'utf8')); } catch {}
+        try { metrics = JSON.parse(await readFile(metricsPath, 'utf8')); } catch { metrics = {}; }
       }
       if (existsSync(tasksPath)) {
-        try { tasks = JSON.parse(await readFile(tasksPath, 'utf8')).tasks; } catch {}
+        try { tasks = JSON.parse(await readFile(tasksPath, 'utf8')).tasks; } catch { tasks = []; }
       }
       if (existsSync(manifestPath)) {
-        try { manifest = JSON.parse(await readFile(manifestPath, 'utf8')); } catch {}
+        try { manifest = JSON.parse(await readFile(manifestPath, 'utf8')); } catch { manifest = {}; }
       }
 
       res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });

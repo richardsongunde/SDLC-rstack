@@ -1,6 +1,6 @@
 {
   "name": "rstack-agents",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Production-ready agentic SDLC framework for Pi and coding agents — orchestrator, builder/validator teams, lifecycle state, and specialist reuse",
   "type": "module",
   "main": "src/index.js",
@@ -14,7 +14,7 @@
     "test": "npx tsx --test tests/*.test.js",
     "validate": "node bin/rstack-agents.js validate",
     "lint": "eslint src/ bin/ tests/",
-    "prepublishOnly": "npm test && npm run validate",
+    "prepublishOnly": "npm run lint && npm test && npm run validate",
     "observer": "node bin/rstack-observer.js",
     "observer:dev": "node --watch bin/rstack-observer.js",
     "business": "node bin/rstack-business.js",

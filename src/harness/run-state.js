@@ -48,7 +48,7 @@ export async function updateRunMetrics(runDir, metricsUpdate = {}) {
   if (existsSync(path)) {
     try {
       current = JSON.parse(await readFile(path, 'utf8'));
-    } catch {}
+    } catch { current = {}; }
   }
 
   const merged = {

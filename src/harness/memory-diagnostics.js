@@ -22,7 +22,7 @@ function daysSince(isoDate) {
 
 import { readMemoryConfig, projectMemoryDir } from './memory.js';
 
-export async function runMemoryDiagnostics(projectRoot, runId) {
+export async function runMemoryDiagnostics(projectRoot, _runId) {
   let memoryDir = projectRoot;
   let staleAfterDays = 90;
   let maxStoreSizeKb = 2048;
@@ -43,7 +43,7 @@ export async function runMemoryDiagnostics(projectRoot, runId) {
     try {
       const s = await stat(episodesPath);
       storeSizeKb = Math.round(s.size / 1024);
-    } catch {}
+    } catch { storeSizeKb = 0; }
   }
 
   const diagnostics = [];
@@ -62,7 +62,7 @@ export async function runMemoryDiagnostics(projectRoot, runId) {
         diagnostics.push({ type: 'signature_failure', severity: 'warning', message: `Episode ${ep.episode_id} has no signature`, episode_id: ep.episode_id });
       }
       // Note: full crypto verify requires the project slug secret — we check presence only here
-    } catch {}
+    } catch { /* skip malformed episode memory line */ }
   }
 
   // Duplicate episode_ids
