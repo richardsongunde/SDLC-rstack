@@ -579,10 +579,12 @@ function apprCardHtml(a, canAct) {
   return '<div class="appr-card ' + s + '"><div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:5px"><div class="appr-title">' + esc(a.title || a.type || 'Approval required') + '</div>' + sp + '</div>' +
     '<div class="appr-detail">' + esc(a.detail || a.reason || '') + '</div>' +
     '<div class="appr-meta">' + esc((a.runId || '—').slice(-14)) + ' · ' + esc((a.ts || '').replace('T', ' ').slice(0, 16)) + '</div>' +
-    (canAct ? '<div class="appr-btns"><button class="btn-approve" onclick="doApprove(\'' + esc(a.id) + '\')">Approve</button><button class="btn-reject" onclick="doReject(\'' + esc(a.id) + '\')">Reject</button></div>' : '') +
+    (canAct ? '<div class="appr-btns"><button class="btn-approve" data-id="' + esc(a.id) + '" onclick="doApproveBtn(this)">Approve</button><button class="btn-reject" data-id="' + esc(a.id) + '" onclick="doRejectBtn(this)">Reject</button></div>' : '') +
   '</div>';
 }
 
+function doApproveBtn(btn) { doApprove(btn.getAttribute('data-id')); }
+function doRejectBtn(btn)  { doReject(btn.getAttribute('data-id')); }
 function doApprove(id) { fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: id }) }); }
 function doReject(id)  { fetch('/api/reject',  { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: id }) }); }
 
@@ -607,7 +609,7 @@ function renderRuns(s) {
     var proj   = (r.projectRoot || '').split('/').filter(Boolean).pop() || '—';
     var created = (r.manifest || {}).created_at ? (r.manifest.created_at || '').slice(0, 16).replace('T', ' ') : '—';
     var cost   = (((r.metrics || {}).cumulative_cost_usd) || 0).toFixed(4);
-    return '<tr class="clickable" onclick="openDrawer(\'' + esc(r.runId) + '\')">' +
+    return '<tr class="clickable" data-runid="' + esc(r.runId) + '" onclick="openDrawerRow(this)">' +
       '<td>' + pill(r.derivedStatus || 'idle') + '</td>' +
       '<td style="max-width:0"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700">' + esc((r.manifest || {}).goal || '—') + '</div><div style="font-family:monospace;font-size:10px;color:#aaa;margin-top:2px">' + created + '</div></td>' +
       '<td><span style="font-family:monospace;font-size:10.5px;color:#2563eb">' + esc(proj) + '</span></td>' +
@@ -649,6 +651,7 @@ function renderTeam(s) {
 }
 
 // ── Run Drawer ────────────────────────────────────────────────────────────────
+function openDrawerRow(row) { openDrawer(row.getAttribute('data-runid')); }
 function openDrawer(runId) {
   var r = (STATE && STATE.runs || []).filter(function(x) { return x.runId === runId; })[0];
   if (!r) return;
