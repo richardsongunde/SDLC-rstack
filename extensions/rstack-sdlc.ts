@@ -6,6 +6,7 @@ import { createConnection } from "node:net";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, writeFile, appendFile } from "node:fs/promises";
 import { basename, dirname, join, relative, resolve } from "node:path";
+import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { getCanonicalStage, stageArtifactRelativePath } from "../src/harness/stages.js";
 import { validateBuilderContract } from "../src/harness/contracts.js";
@@ -33,8 +34,26 @@ function safeOpen(filePath: string): void {
   }
 }
 
-function tryAutoLaunchBusinessHub(projectRoot: string): void {
-  if (process.env.RSTACK_NO_BUSINESS_HUB === "1" || process.env.CI) return;
+function tryRegisterAndLaunchHub(projectRoot: string): void {
+  if (process.env.CI) return;
+
+  // Write project root to global registry so the hub can discover it
+  const registryDir  = join(homedir(), ".rstack");
+  const registryFile = join(registryDir, "known-projects.json");
+  (async () => {
+    try {
+      await mkdir(registryDir, { recursive: true });
+      let list: string[] = [];
+      try { list = JSON.parse(await readFile(registryFile, "utf8")); } catch { /* first run */ }
+      const abs = resolve(projectRoot);
+      if (!list.includes(abs)) {
+        list = [abs, ...list.filter((p: string) => p !== abs)].slice(0, 50);
+        await writeFile(registryFile, JSON.stringify(list, null, 2));
+      }
+    } catch { /* best-effort */ }
+  })();
+
+  if (process.env.RSTACK_NO_BUSINESS_HUB === "1") return;
   const port = Number(process.env.RSTACK_BUSINESS_PORT ?? 3008);
   const sock = createConnection({ port, host: "127.0.0.1" });
   sock.setTimeout(400);
@@ -905,7 +924,7 @@ export default function (pi: ExtensionAPI) {
     await mkdir(rstackDir(projectRoot), { recursive: true });
     await mkdir(memoryDir(projectRoot), { recursive: true });
     ctx.ui.setStatus("rstack", "RStack SDLC ready");
-    tryAutoLaunchBusinessHub(projectRoot);
+    tryRegisterAndLaunchHub(projectRoot);
   });
 
   pi.on("before_agent_start", async (event) => {

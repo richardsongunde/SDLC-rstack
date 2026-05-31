@@ -16,3 +16,4 @@ export { generateRunReport } from './harness/reporter.js';
 export { readApprovals, appendApproval, resolveApproval, pendingApprovals, approvalSummary } from './harness/approval-queue.js';
 export { evaluateAlerts, plainLanguageSummary, DEFAULT_ALERT_THRESHOLDS } from './harness/alert-engine.js';
 export { autoLaunchBusinessHub } from './harness/auto-launch.js';
+export { registerProject, readRegistry, knownProjectRoots } from './harness/project-registry.js';

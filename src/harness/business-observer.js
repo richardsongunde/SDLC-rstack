@@ -1,10 +1,11 @@
 import { createServer }       from 'node:http';
-import { existsSync, readFileSync, watchFile } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { readFile, readdir, mkdir } from 'node:fs/promises';
 import { join, resolve }      from 'node:path';
 import { spawn }              from 'node:child_process';
-import { evaluateAlerts, plainLanguageSummary, DEFAULT_ALERT_THRESHOLDS } from './alert-engine.js';
+import { evaluateAlerts, plainLanguageSummary } from './alert-engine.js';
 import { readApprovals, resolveApproval, pendingApprovals, approvalSummary } from './approval-queue.js';
+import { knownProjectRoots } from './project-registry.js';
 
 // owner: RStack developed by Richardson Gunde
 
@@ -102,15 +103,15 @@ function broadcast(msg) {
   for (const s of clients) wsSend(s, msg);
 }
 
-// ── Multi-run aggregation ─────────────────────────────────────────────────────
+// ── Multi-project, multi-run aggregation ──────────────────────────────────────
 
-async function getAllRuns(projectRoot) {
+async function getRunsForRoot(projectRoot) {
   const runsDir = join(projectRoot, '.rstack', 'runs');
   if (!existsSync(runsDir)) return [];
   let entries;
   try { entries = await readdir(runsDir); } catch { return []; }
 
-  const runs = await Promise.all(entries.map(async (runId) => {
+  return Promise.all(entries.map(async (runId) => {
     const runDir = join(runsDir, runId);
     const [manifest, metrics, tasksRaw] = await Promise.all([
       readJson(join(runDir, 'manifest.json'), {}),
@@ -120,19 +121,35 @@ async function getAllRuns(projectRoot) {
     const tasks = Array.isArray(tasksRaw)
       ? tasksRaw
       : Array.isArray(tasksRaw?.tasks) ? tasksRaw.tasks : [];
-
     const events = readJsonlSync(join(runDir, 'events.jsonl'));
-    return { runId, manifest, metrics, tasks, events };
+    return { runId, projectRoot, manifest, metrics, tasks, events };
   }));
+}
 
-  // Sort newest first (run IDs are typically timestamped)
-  return runs.sort((a, b) => b.runId.localeCompare(a.runId));
+async function getAllRuns(projectRoot) {
+  // Aggregate across all known project roots + the one this server was started for
+  const roots = await knownProjectRoots(projectRoot);
+  const perRoot = await Promise.all(roots.map(r => getRunsForRoot(r)));
+  const all = perRoot.flat();
+
+  // Deduplicate by runId (same run can't appear twice, but guard anyway)
+  const seen = new Set();
+  const deduped = all.filter(r => seen.has(r.runId) ? false : seen.add(r.runId));
+
+  // Sort newest first
+  return deduped.sort((a, b) => b.runId.localeCompare(a.runId));
+}
+
+async function getAllApprovals(projectRoot) {
+  const roots = await knownProjectRoots(projectRoot);
+  const perRoot = await Promise.all(roots.map(r => readApprovals(r)));
+  return perRoot.flat();
 }
 
 async function buildFullState(projectRoot) {
   const [runs, allApprovals] = await Promise.all([
     getAllRuns(projectRoot),
-    readApprovals(projectRoot),
+    getAllApprovals(projectRoot),
   ]);
 
   const pending = pendingApprovals(allApprovals);
@@ -158,6 +175,7 @@ async function buildFullState(projectRoot) {
           summary,
           type: ev.type,
           runId: run.runId,
+          projectRoot: run.projectRoot,
           goal: run.manifest?.goal,
           level: ev.type === 'task_validated' && ev.status === 'FAIL' ? 'fail'
                : ev.type === 'guardrail_triggered' ? 'warn'
@@ -186,7 +204,7 @@ async function buildFullState(projectRoot) {
   // Traceability: map run requirements → artifacts
   const traceMap = [];
   for (const run of runs.slice(0, 5)) {
-    const stageArtifactsDir = join(projectRoot, '.rstack', 'runs', run.runId, 'artifacts', 'stages');
+    const stageArtifactsDir = join(run.projectRoot ?? projectRoot, '.rstack', 'runs', run.runId, 'artifacts', 'stages');
     const reqFile = join(stageArtifactsDir, '02-requirements', 'requirements.json');
     const archDir  = join(stageArtifactsDir, '06-architecture');
     const codeFile = join(stageArtifactsDir, '07-code', 'implementation-report.json');
@@ -730,8 +748,9 @@ function renderOverviewFeed() {
 
 function feedItemHtml(f) {
   const ts = f.ts ? f.ts.replace('T',' ').slice(0,16) : '';
+  const proj = f.projectRoot ? f.projectRoot.replace(/.*\/([^/]+)$/, '$1') : '';
   const goalStr = f.goal ? ' · ' + esc(f.goal).slice(0,40) : '';
-  const runStr  = f.runId ? esc(f.runId.slice(-10)) + goalStr : '';
+  const runStr  = f.runId ? esc(f.runId.slice(-10)) + (proj ? ' [' + esc(proj) + ']' : '') + goalStr : '';
   return \`<div class="feed-item">
     <div class="feed-dot \${f.level ?? 'info'}"></div>
     <div style="flex:1">
@@ -897,11 +916,18 @@ function renderHistory() {
       : status === 'done' ? '<span class="pill pass">DONE</span>'
       : '<span class="pill idle">IDLE</span>';
     const created = r.manifest?.created_at ? r.manifest.created_at.replace('T',' ').slice(0,16) : '—';
+    const projLabel = r.projectRoot ? r.projectRoot.replace(/.*\/([^/]+)$/, '$1') : '';
+    const fw = r.manifest?.framework ?? r.manifest?.mode ?? '';
     return \`<div class="run-row">
       <div class="run-id">\${esc(r.runId.slice(-14))}</div>
       <div style="flex:1">
         <div class="run-goal">\${esc(r.manifest?.goal ?? '—')}</div>
-        <div style="font-size:10px;color:var(--dim);margin-top:2px">\${created} · \${tasks.length} tasks · \${passed} pass / \${failed} fail</div>
+        <div style="font-size:10px;color:var(--dim);margin-top:2px">
+          \${created}
+          \${projLabel ? ' · <span style="color:var(--info)">'+esc(projLabel)+'</span>' : ''}
+          \${fw ? ' · '+esc(fw) : ''}
+          · \${tasks.length} tasks · \${passed} pass / \${failed} fail
+        </div>
       </div>
       <div class="run-meta">
         \${statusPill}
