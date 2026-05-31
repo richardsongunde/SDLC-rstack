@@ -273,7 +273,10 @@ function startPolling() {
     try {
       const state = await buildFullState(PROJECT_ROOT);
       broadcast(state);
-    } catch { /* best-effort */ }
+    } catch (err) {
+      // Log but never crash — the next tick will retry
+      process.stderr.write(`[rstack-business] poll error: ${err?.message}\n`);
+    }
   }, 3000);
 }
 
@@ -289,10 +292,22 @@ const server = createServer(async (req, res) => {
 
   if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
 
-  if (url.pathname === '/api/state' && req.method === 'GET') {
-    const state = await buildFullState(PROJECT_ROOT);
+  // Health check — used by Pi adapter to verify the hub is truly alive
+  if (url.pathname === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(state));
+    res.end(JSON.stringify({ ok: true, port: PORT, ts: new Date().toISOString() }));
+    return;
+  }
+
+  if (url.pathname === '/api/state' && req.method === 'GET') {
+    try {
+      const state = await buildFullState(PROJECT_ROOT);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(state));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: String(err?.message) }));
+    }
     return;
   }
 

@@ -2,8 +2,9 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { StringEnum } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
 import { spawn } from "node:child_process";
+import { request as httpRequest } from "node:http";
 import { createConnection } from "node:net";
-import { existsSync } from "node:fs";
+import { existsSync, openSync } from "node:fs";
 import { mkdir, readFile, readdir, writeFile, appendFile } from "node:fs/promises";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { homedir } from "node:os";
@@ -34,6 +35,35 @@ function safeOpen(filePath: string): void {
   }
 }
 
+function openUrl(url: string): void {
+  if (process.env.CI) return;
+  const cmd = process.platform === "win32" ? "start"
+    : process.platform === "darwin" ? "open" : "xdg-open";
+  try {
+    const cp = spawn(cmd, [url], { stdio: "ignore", detached: true, shell: process.platform === "win32" });
+    cp.on("error", () => {});
+    cp.unref();
+  } catch { /* best-effort */ }
+}
+
+function hubHealthCheck(port: number): Promise<boolean> {
+  return new Promise(resolve => {
+    const req = httpRequest(
+      { hostname: "127.0.0.1", port, path: "/health", method: "GET", timeout: 700 },
+      res => {
+        let body = "";
+        res.on("data", (d: Buffer) => { body += d.toString(); });
+        res.on("end", () => {
+          try { resolve(JSON.parse(body)?.ok === true); } catch { resolve(false); }
+        });
+      }
+    );
+    req.on("error", () => resolve(false));
+    req.on("timeout", () => { req.destroy(); resolve(false); });
+    req.end();
+  });
+}
+
 function tryRegisterAndLaunchHub(projectRoot: string): void {
   if (process.env.CI) return;
 
@@ -54,28 +84,54 @@ function tryRegisterAndLaunchHub(projectRoot: string): void {
   })();
 
   if (process.env.RSTACK_NO_BUSINESS_HUB === "1") return;
+
   const port = Number(process.env.RSTACK_BUSINESS_PORT ?? 3008);
-  const sock = createConnection({ port, host: "127.0.0.1" });
-  sock.setTimeout(400);
-  sock.on("connect", () => {
-    sock.destroy();
-    process.stdout.write(`  \x1b[2mRStack Business Hub: http://localhost:${port}\x1b[0m\n`);
-  });
-  sock.on("error", () => {
-    sock.destroy();
-    const binPath = join(PACKAGE_ROOT, "bin", "rstack-business.js");
-    if (!existsSync(binPath)) return;
+  const url  = `http://localhost:${port}`;
+  const binPath = join(PACKAGE_ROOT, "bin", "rstack-business.js");
+
+  const logDir  = join(homedir(), ".rstack");
+  const logFile = join(logDir, "business-hub.log");
+
+  (async () => {
+    const alive = await hubHealthCheck(port);
+
+    if (alive) {
+      // Hub is already running — just open the browser to it
+      process.stdout.write(`  \x1b[33m▸ RStack Business Hub: ${url}\x1b[0m\n`);
+      openUrl(url);
+      return;
+    }
+
+    // Port free (or hub died) — spawn a fresh instance
+    if (!existsSync(binPath)) {
+      process.stdout.write(`  \x1b[2m[rstack] rstack-business not found at ${binPath}\x1b[0m\n`);
+      return;
+    }
+
+    await mkdir(logDir, { recursive: true });
+    const logFd = openSync(logFile, "a");
+
     const child = spawn(process.execPath, [binPath, "--no-browser", "--project", projectRoot], {
-      stdio: "ignore",
+      stdio: ["ignore", logFd, logFd],
       detached: true,
       env: { ...process.env, RSTACK_NO_BROWSER: "1", RSTACK_BUSINESS_PORT: String(port) },
     });
     child.unref();
-    setTimeout(() => {
-      process.stdout.write(`  \x1b[33mRStack Business Hub: http://localhost:${port}\x1b[0m\n`);
-    }, 800);
-  });
-  sock.on("timeout", () => sock.destroy());
+
+    // Wait for the server to bind (up to 3 s), then open browser
+    let ready = false;
+    for (let i = 0; i < 6; i++) {
+      await new Promise(r => setTimeout(r, 500));
+      if (await hubHealthCheck(port)) { ready = true; break; }
+    }
+
+    if (ready) {
+      process.stdout.write(`  \x1b[33m▸ RStack Business Hub: ${url}\x1b[0m\n`);
+      openUrl(url);
+    } else {
+      process.stdout.write(`  \x1b[31m[rstack] Business Hub failed to start — check ${logFile}\x1b[0m\n`);
+    }
+  })();
 }
 
 type RegistryItem = {
