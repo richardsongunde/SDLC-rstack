@@ -35,9 +35,14 @@ export async function readRegistry() {
 
 export async function knownProjectRoots(extraRoot) {
   const registered = await readRegistry();
-  const all = extraRoot
-    ? [resolve(extraRoot), ...registered.filter(p => resolve(p) !== resolve(extraRoot))]
-    : registered;
+  // Always include CWD so `rstack-business` works immediately on a fresh global
+  // install before any Pi session has run (and thus before the registry is populated).
+  const cwd = process.cwd();
+  const all = new Set([
+    ...(extraRoot ? [resolve(extraRoot)] : []),
+    cwd,
+    ...registered,
+  ]);
   // Keep only roots that still have a .rstack directory
-  return all.filter(p => existsSync(join(p, '.rstack')));
+  return [...all].filter(p => existsSync(join(p, '.rstack')));
 }

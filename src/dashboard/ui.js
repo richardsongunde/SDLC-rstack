@@ -466,7 +466,14 @@ body{font-family:var(--f);background:var(--bg);color:var(--text);font-size:13.5p
     <!-- AGENT ACTIONS -->
     <div class="page" id="page-agents">
       <div class="pg-head"><div class="pg-title">Agent Actions</div><div class="pg-sub">What every builder did — decisions, evidence, risks, tests run</div></div>
-      <div id="agent-list"></div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-hdr">Agent Work Stream <span id="agents-count" style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;color:var(--text-3)"></span></div>
+        <div style="padding:14px 16px;font-size:12px;color:var(--text-2);line-height:1.5;border-bottom:1px solid var(--border)">
+          Each card is a <code style="font-family:var(--m);background:var(--elevated);padding:1px 5px;border-radius:3px">builder.json</code> contract written by an RStack agent.
+          Green border = PASS + evidence. Amber = active. Grey = pending (no contract yet).
+        </div>
+        <div style="padding:14px 16px" id="agent-list"></div>
+      </div>
     </div>
 
     <!-- APPROVALS -->
