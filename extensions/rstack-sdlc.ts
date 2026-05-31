@@ -759,7 +759,9 @@ function defaultToolsForAgent(agentName: string): string[] {
 }
 
 function piInvocation(args: string[]): { command: string; args: string[] } {
-  return { command: "pi", args };
+  // Defaults to the Pi CLI. Set RSTACK_WORKER_COMMAND to point delegated workers
+  // at a Pi-compatible runtime (e.g. when driving RStack from another harness).
+  return { command: process.env.RSTACK_WORKER_COMMAND || "pi", args };
 }
 
 function finalAssistantText(messages: any[]): string {

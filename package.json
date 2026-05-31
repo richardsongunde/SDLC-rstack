@@ -6,7 +6,8 @@
   "main": "src/index.js",
   "bin": {
     "rstack-agents": "bin/rstack-agents.js",
-    "rstack-observer": "bin/rstack-observer.js"
+    "rstack-observer": "bin/rstack-observer.js",
+    "rstack-operator-bridge": "bin/rstack-operator-bridge.ts"
   },
   "scripts": {
     "test": "npx tsx --test tests/*.test.js",
@@ -60,6 +61,7 @@
     "plugins/",
     "docs/public/",
     "docs/HARNESS.md",
+    "operator.json",
     "README.md"
   ],
   "pi": {
@@ -83,6 +85,7 @@
     "commander": "^12.0.0",
     "fs-extra": "^11.2.0",
     "ora": "^8.0.1",
+    "tsx": "^4.19.0",
     "typebox": "^1.1.38"
   },
   "peerDependencies": {

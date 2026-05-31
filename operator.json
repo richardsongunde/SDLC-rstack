@@ -1,0 +1,8 @@
+{
+  "name": "rstack-sdlc",
+  "version": "0.3.0",
+  "author": "Richardson Gunde",
+  "description": "Governed AI-SDLC framework — Operator adapter for the RStack sdlc_* tools.",
+  "extensions": ["extensions"],
+  "prompts": ["prompts"]
+}

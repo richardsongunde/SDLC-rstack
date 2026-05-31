@@ -25,6 +25,7 @@ RStack ships with a native **Pi adapter today**, but the framework itself is por
 | `prompts/` | Prompt templates and command-style workflows. |
 | `plugins/` | Domain packs with manifests, agents, skills, and commands. |
 | `extensions/rstack-sdlc.ts` | Native Pi runtime adapter. |
+| `extensions/rstack_sdlc.py` + `bin/rstack-operator-bridge.ts` | Native Operator (Python) adapter — reuses the Pi adapter via a Node bridge. |
 | `src/harness/` | Canonical 15-stage metadata, run-folder preparation, contracts, evidence, and guardrails. |
 | `.rstack/runs/` | Generated run state, specs, approvals, traceability, tasks, and validation evidence. |
 
@@ -152,6 +153,57 @@ Then ask Pi:
 ```text
 Use RStack to plan, build, validate, test, document, and prepare this feature for release: <your goal>
 ```
+
+</details>
+
+<details>
+<summary><strong>Install in Operator, full native adapter</strong></summary>
+
+[Operator](https://github.com/richard-devbot/operator) is a Python AI-agent harness. RStack ships
+a native Operator adapter (`extensions/rstack_sdlc.py`) that exposes the same `sdlc_*` tools. It
+reuses the existing TypeScript adapter/harness through a thin Node bridge
+(`bin/rstack-operator-bridge.ts`) — no logic is reimplemented — so behavior matches Pi.
+
+**Prerequisites:** Node.js (with `npx`) on PATH.
+
+```python
+from operator_use.package.installer import install_package
+from operator_use.settings.paths import get_packages_dir
+
+# From this local checkout (or "git:github.com/richard-devbot/SDLC-rstack"):
+install_package("/path/to/SDLC-rstack", get_packages_dir())
+```
+
+Install the Node dependencies the bridge needs (once, in the package directory):
+
+```bash
+cd ~/.operator/packages/git/github.com/richard-devbot/SDLC-rstack   # or your local checkout
+npm install
+```
+
+Register the package and reload:
+
+```python
+from operator_use.settings.manager import settings_manager
+settings_manager.set_packages(["/path/to/SDLC-rstack"])   # or the git: source
+```
+
+The 15 `sdlc_*` tools then load automatically. Optional configuration via the extension's
+`settings` block in `~/.operator/settings.json` (or the matching `RSTACK_*` env vars):
+
+```json
+{
+  "extension_list": [
+    { "name": "rstack_sdlc", "enabled": true, "settings": {
+      "worker_command": "pi", "default_model": "gemini-2.5-flash",
+      "slack_webhook": "https://hooks.slack.com/...", "allow_destructive": "0"
+    } }
+  ]
+}
+```
+
+> **Note:** `sdlc_delegate` spawns Pi-style sub-workers. Under Operator it needs `pi` on PATH, or
+> set `worker_command` to a Pi-compatible CLI. All other tools are fully self-contained.
 
 </details>
 
@@ -713,6 +765,8 @@ outputs/
 ---
 
 ## Adapter roadmap
+
+Shipped: native **Pi** adapter and native **Operator** adapter (Python, via Node bridge).
 
 Recommended next adapters:
 
