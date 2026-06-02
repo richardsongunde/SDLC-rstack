@@ -4,6 +4,7 @@ export const pages = [
   ['command', '00', 'Command Center', 'Observe'],
   ['workflow', '01', 'Workflow Map', 'Observe'],
   ['projects', '02', 'Projects & Runs', 'Observe'],
+  ['run-analytics', '10', 'Run Analytics', 'Observe'],
   ['agent-work', '03', 'Agent Work', 'Observe'],
   ['live-feed', '04', 'Live Feed', 'Observe'],
   ['approvals', '05', 'Approvals', 'Manage'],
@@ -122,7 +123,29 @@ function pageBody(id) {
         </div>
       </div>
     `,
-    projects: '<div class="grid-2"><div class="panel"><div class="panel-head"><span class="panel-title">Known Projects</span><span class="panel-note" id="projects-count"></span></div><div class="panel-body"><div class="grid-3" id="projects-grid"></div></div></div><div class="panel"><div class="panel-head"><span class="panel-title">Run Sessions</span><span class="panel-note" id="runs-count"></span></div><div class="table-wrap"><table><thead><tr><th>Status</th><th>Run</th><th>Project</th><th>Tasks</th><th>Cost</th></tr></thead><tbody id="runs-table"></tbody></table></div></div></div>',
+    projects: '<div class="grid-2"><div class="panel"><div class="panel-head"><span class="panel-title">Known Projects</span><span class="panel-note" id="projects-count"></span></div><div class="panel-body"><div class="grid-3" id="projects-grid"></div></div></div><div class="panel"><div class="panel-head"><span class="panel-title">Run Sessions</span><span class="panel-note" id="runs-count"></span></div><div class="table-wrap"><table><thead><tr><th>Status</th><th>Run</th><th>Project</th><th>Tasks</th><th>Duration</th><th>Cost</th></tr></thead><tbody id="runs-table"></tbody></table></div></div></div>',
+    'run-analytics': `
+      <div class="panel">
+        <div class="panel-head">
+          <span class="panel-title">Run Timeline</span>
+          <select class="run-select" id="analytics-run-select" onchange="renderAnalyticsRun(this.value)"></select>
+        </div>
+        <div class="panel-body">
+          <div class="kpi-grid" id="analytics-kpis"></div>
+          <div class="gantt" id="analytics-gantt"></div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-head"><span class="panel-title">Avg Stage Duration (all runs)</span><span class="panel-note" id="analytics-stage-count"></span></div>
+          <div class="panel-body"><div class="stage-bars" id="analytics-stage-bars"></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><span class="panel-title">Run-over-Run Trends</span><span class="panel-note" id="analytics-trend-count"></span></div>
+          <div class="table-wrap"><table><thead><tr><th>Run</th><th>Duration</th><th>Tools</th><th>Pass/Fail</th><th>Quality</th><th>Cost</th></tr></thead><tbody id="analytics-trend-table"></tbody></table></div>
+        </div>
+      </div>
+    `,
     'agent-work': '<div class="panel"><div class="panel-head"><span class="panel-title">Agent Work by Run</span><span class="panel-note" id="agent-work-count"></span></div><div class="panel-body" id="agent-work-list"></div></div>',
     'live-feed': '<div class="panel"><div class="panel-head"><span class="panel-title">Event Stream</span><span class="panel-note" id="live-feed-count"></span></div><div class="panel-body"><div class="feed-list" id="live-feed-list"></div></div></div>',
     approvals: '<div class="grid-2"><div class="panel"><div class="panel-head"><span class="panel-title">Actionable Queue</span><span class="panel-note" id="approvals-count"></span></div><div class="panel-body"><div class="stack-list" id="approvals-list"></div></div></div><div class="panel"><div class="panel-head"><span class="panel-title">Resolved</span></div><div class="panel-body"><div class="stack-list" id="approvals-resolved"></div></div></div></div>',
