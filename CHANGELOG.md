@@ -5,6 +5,20 @@
 All notable changes to RStack are documented here. Entries are user-focused:
 what you can now do that you couldn't before.
 
+## [1.3.0] - 2026-06-02
+
+### Added
+- **Notifications on five channels.** Your SDLC events — run started, task
+  validated, execution reports, approvals — can now reach **Slack, Microsoft
+  Teams, Discord, Telegram, and WhatsApp**, all at once. Configure any mix of
+  channels via environment variables or `.rstack/notifications.json`; one
+  event fans out to every channel you've set up.
+- **`npx rstack-agents notify --test`.** Verify your webhook setup in seconds:
+  sends a test message to every configured channel and reports per-channel
+  success or failure.
+- A failing webhook never fails a run — channel errors are reported, never
+  thrown.
+
 ## [1.2.0] - 2026-06-02
 
 ### Added

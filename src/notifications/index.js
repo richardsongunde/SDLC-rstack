@@ -1,94 +1,32 @@
-import { request } from 'node:https';
+/**
+ * Notifications layer — public API.
+ *
+ * Channel implementations live in ./channels/ (slack, teams, discord,
+ * telegram, whatsapp); config-driven fan-out lives in ./router.js.
+ * This module keeps the original exports working (sendSlackNotification,
+ * formatters, converters) so existing imports never break.
+ *
+ * owner: RStack developed by Richardson Gunde
+ */
 
-// owner: RStack developed by Richardson Gunde
+import { postJson } from './channels/http.js';
+import { convertSlackToDiscord } from './channels/discord.js';
+import { convertSlackToTeams } from './channels/teams.js';
 
-function convertSlackToDiscord(slackPayload) {
-  if (!slackPayload || !slackPayload.attachments) return slackPayload;
-  const embeds = slackPayload.attachments.map((att) => {
-    const embed = {
-      color: att.color ? parseInt(att.color.replace('#', ''), 16) : 0,
-      fields: []
-    };
-    
-    let descriptionLines = [];
-    let footerText = '';
-
-    for (const block of (att.blocks || [])) {
-      if (block.type === 'section' && block.text) {
-        descriptionLines.push(block.text.text);
-      }
-      if (block.type === 'fields' && block.fields) {
-        for (const f of block.fields) {
-          const raw = f.text || '';
-          const parts = raw.split('\n');
-          const name = parts[0] ? parts[0].replace(/\*/g, '') : 'Detail';
-          const value = parts.slice(1).join('\n') || '—';
-          embed.fields.push({ name, value, inline: true });
-        }
-      }
-      if (block.type === 'context' && block.elements) {
-        footerText = block.elements.map(e => e.text || '').join(' | ');
-      }
-    }
-    
-    if (descriptionLines.length > 0) {
-      embed.description = descriptionLines.join('\n');
-    }
-    if (footerText) {
-      embed.footer = { text: footerText };
-    }
-    return embed;
-  });
-
-  return { embeds };
-}
-
-function convertSlackToTeams(slackPayload) {
-  if (!slackPayload || !slackPayload.attachments) return slackPayload;
-  const att = slackPayload.attachments[0];
-  const themeColor = att && att.color ? att.color.replace('#', '') : '3b82f6';
-  
-  const sections = [];
-  let summary = 'RStack SDLC Notification';
-
-  if (att && att.blocks) {
-    for (const block of att.blocks) {
-      if (block.type === 'section' && block.text) {
-        summary = block.text.text.replace(/\*/g, '');
-        sections.push({
-          activityTitle: block.text.text,
-          activitySubtitle: 'RStack System Event',
-          facts: []
-        });
-      }
-      if (block.type === 'fields' && block.fields) {
-        const currentSection = sections[sections.length - 1] || { facts: [] };
-        if (!sections.includes(currentSection)) {
-          sections.push(currentSection);
-        }
-        for (const f of block.fields) {
-          const raw = f.text || '';
-          const parts = raw.split('\n');
-          const name = parts[0] ? parts[0].replace(/\*/g, '') : 'Detail';
-          const value = parts.slice(1).join('\n') || '—';
-          currentSection.facts.push({ name, value });
-        }
-      }
-    }
-  }
-
-  return {
-    "@type": "MessageCard",
-    "@context": "http://schema.org/extensions",
-    themeColor,
-    summary,
-    sections
-  };
-}
+export { convertSlackToDiscord } from './channels/discord.js';
+export { convertSlackToTeams } from './channels/teams.js';
+export { slackPayloadToText } from './channels/text.js';
+export { sendSlack } from './channels/slack.js';
+export { sendTeams } from './channels/teams.js';
+export { sendDiscord } from './channels/discord.js';
+export { sendTelegram } from './channels/telegram.js';
+export { sendWhatsApp } from './channels/whatsapp.js';
+export { notifyAll, resolveChannels, hasConfiguredChannels, CHANNEL_SENDERS } from './router.js';
 
 /**
  * Dispatches an HTTP POST payload to the Slack, Teams, or Discord Webhook URL.
  * Fails gracefully by logging to console if the webhook is not configured.
+ * (Back-compat single-webhook entry point — prefer notifyAll for fan-out.)
  */
 export async function sendSlackNotification(webhookUrl, payload) {
   if (!webhookUrl) {
@@ -103,42 +41,7 @@ export async function sendSlackNotification(webhookUrl, payload) {
     finalPayload = convertSlackToTeams(payload);
   }
 
-  return new Promise((resolve, reject) => {
-    try {
-      const url = new URL(webhookUrl);
-      const data = JSON.stringify(finalPayload);
-
-      const options = {
-        hostname: url.hostname,
-        path: url.pathname + url.search,
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(data),
-        },
-      };
-
-      const req = request(options, (res) => {
-        let body = '';
-        res.on('data', (chunk) => {
-          body += chunk;
-        });
-        res.on('end', () => {
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            resolve(body || 'ok');
-          } else {
-            reject(new Error(`Webhook post failed with status: ${res.statusCode}. Body: ${body}`));
-          }
-        });
-      });
-
-      req.on('error', (e) => reject(e));
-      req.write(data);
-      req.end();
-    } catch (err) {
-      reject(err);
-    }
-  });
+  return postJson(webhookUrl, finalPayload);
 }
 
 /**

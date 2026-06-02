@@ -17,6 +17,9 @@ npx rstack-agents init --framework pi       # or be explicit
 | Operator | [operator.md](operator.md) | `src/integrations/operator/rstack_sdlc.py` (Python, bridges to Node) |
 | Anything else | [custom.md](custom.md) | The `.rstack/` state contract + Node bridge |
 
+Notifications for all of them: **Slack, Teams, Discord, Telegram, WhatsApp** —
+see [webhooks.md](webhooks.md).
+
 Every integration shares the same core: governed stages, builder/validator
 contracts, evidence, approvals — and the same Business Hub dashboard:
 

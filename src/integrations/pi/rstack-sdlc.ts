@@ -16,7 +16,7 @@ import { DEFAULT_HARNESS_GUARDRAILS, guardrailSummary } from "../../core/harness
 import { prepareRunState, prepareStageFolders, createStageCheckpoint, rollbackStage, updateRunMetrics } from "../../core/harness/run-state.js";
 import { appendEpisode, appendLearning, episodeFromValidation, formatEpisodesForPrompt, projectMemoryDir, readMemoryConfig, recallEpisodes, sanitizeMemoryText, searchLearnings, writeRetrievalEvent } from "../../memory/index.js";
 import { buildRunReport, generateRunReport, renderDashboardHtml, renderTraceHtml } from "../../observability/collectors/reporter.js";
-import { sendSlackNotification, formatSlackStageMessage, formatSlackTaskReportMessage } from "../../notifications/index.js";
+import { notifyAll, hasConfiguredChannels, formatSlackStageMessage, formatSlackTaskReportMessage } from "../../notifications/index.js";
 
 const RSTACK_VERSION = "0.3.0";
 const EXTENSION_DIR = dirname(fileURLToPath(import.meta.url));
@@ -1124,9 +1124,9 @@ export default function (pi: ExtensionAPI) {
         const payload = formatSlackStageMessage(manifest.run_id, params.artifact, params.status === "APPROVED" ? "PASS" : "BLOCKED", {
           message: `Human-in-the-loop sign-off recorded by ${record.approver}.${params.comments ? ` Comments: "${params.comments}"` : ""}`,
         });
-        await sendSlackNotification(process.env.RSTACK_SLACK_WEBHOOK, payload);
+        await notifyAll(payload, { projectRoot });
       } catch (err) {
-        console.error("Failed to send Slack approval notification:", err);
+        console.error("Failed to send approval notification:", err);
       }
 
       return { content: [{ type: "text", text: `Approval ${params.status} for ${params.artifact}` }], details: record };
@@ -1180,9 +1180,9 @@ export default function (pi: ExtensionAPI) {
         const payload = formatSlackStageMessage(id, "00-environment", "START", {
           message: `RStack Run started for goal: "${params.goal}" in ${manifest.mode} mode.`,
         });
-        await sendSlackNotification(process.env.RSTACK_SLACK_WEBHOOK, payload);
+        await notifyAll(payload, { projectRoot });
       } catch (err) {
-        console.error("Failed to send Slack start notification:", err);
+        console.error("Failed to send start notification:", err);
       }
       return { content: [{ type: "text", text: `Started RStack SDLC run ${id}\nRun directory: ${relative(projectRoot, dir)}\nNext: call sdlc_clarify for product-owner decisions, or sdlc_plan if the goal is already clear.` }], details: manifest };
     },
@@ -1463,11 +1463,10 @@ export default function (pi: ExtensionAPI) {
         status: status === "PASS" ? "PASS" : "FAIL",
         evidence: `${task.output_dir}/validation.json`,
       });
-      // Only build/send notification payloads when a webhook is configured —
-      // buildRunReport reads the full event stream + every task dir, which is
-      // wasted I/O on every validation otherwise (and the unconfigured path
-      // dumps whole payloads to the console).
-      if (process.env.RSTACK_SLACK_WEBHOOK) {
+      // Only build/send notification payloads when at least one channel is
+      // configured — buildRunReport reads the full event stream + every task
+      // dir, which is wasted I/O on every validation otherwise.
+      if (hasConfiguredChannels({ projectRoot })) {
         try {
           const payload = formatSlackStageMessage(manifest.run_id, task.id, status, {
             message: status === "PASS"
@@ -1475,7 +1474,7 @@ export default function (pi: ExtensionAPI) {
               : `Harness validation check failed for ${task.id}. Rerouting task to Builder Sandbox for corrections.`,
             attempt: builderContract?.attempt || "1",
           });
-          await sendSlackNotification(process.env.RSTACK_SLACK_WEBHOOK, payload);
+          await notifyAll(payload, { projectRoot });
 
           // Dispatch rich task execution report
           const runDir = join(runsDir(projectRoot), manifest.run_id);
@@ -1483,10 +1482,10 @@ export default function (pi: ExtensionAPI) {
           const trace = report.tasks[task.id];
           if (trace) {
             const reportPayload = formatSlackTaskReportMessage(manifest.run_id, task.id, trace);
-            await sendSlackNotification(process.env.RSTACK_SLACK_WEBHOOK, reportPayload);
+            await notifyAll(reportPayload, { projectRoot });
           }
         } catch (err) {
-          console.error("Failed to send Slack validation notification:", err);
+          console.error("Failed to send validation notification:", err);
         }
       }
       try {
