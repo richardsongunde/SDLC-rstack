@@ -67,6 +67,18 @@ export function studio3dHtml(port) {
   #panel li { margin-bottom: 3px; }
   #panel .mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
   #panel .why { background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 8px; padding: 10px; font-size: 12px; }
+  .sr-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .sr-chip { background: #F4F4F5; border-radius: 8px; padding: 7px 11px; text-align: center; }
+  .sr-chip b { display: block; font-size: 18px; }
+  .sr-chip span { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .sr-sev { font-size: 12px; font-weight: 600; }
+  .sr-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin: 0 4px 0 8px; }
+  .sr-score { font-size: 30px; font-weight: 800; }
+  .sr-score span { font-size: 14px; color: var(--muted); font-weight: 600; }
+  .sr-gate { margin-top: 8px; font-size: 11px; font-weight: 700; padding: 7px 9px; border-radius: 7px; }
+  .sr-gate.ok { background: #ECFDF5; color: #16A34A; }
+  .sr-gate.bad { background: #FEF2F2; color: #DC2626; animation: pulse-text 1.6s ease-in-out infinite; }
+  .sr-status { font-size: 12px; color: var(--muted); }
   #fallback { display: none; position: fixed; inset: 0; z-index: 50; background: var(--bg);
     align-items: center; justify-content: center; text-align: center; padding: 40px; }
   #fallback .card { max-width: 420px; border: 1px solid var(--line); border-left: 3px solid var(--accent);
@@ -440,8 +452,65 @@ function openAgentPanel(stageId) {
   }
   if (entry.why) html += '<h3>Why waiting</h3><div class="why">' + esc(entry.why) + '</div>';
   if (!task && !entry.why) html += '<h3>Status</h3><div class="persona">Finished — artifacts recorded for this stage.</div>';
+  html += '<div id="stage-report-slot"></div>';
   document.getElementById('panel-body').innerHTML = html;
   document.getElementById('panel').classList.add('open');
+
+  // Fetch + render this stage's structured report as a compact infographic.
+  const run = currentRun();
+  if (run) fetchStageReports(run.runId).then((report) => {
+    const slot = document.getElementById('stage-report-slot');
+    if (!slot || !report || !report.stages) return;
+    const mini = stageReportMini(stageId, report.stages[stageId]);
+    if (mini) slot.innerHTML = '<h3>Stage report</h3>' + mini;
+  });
+}
+
+let REPORT_CACHE = {};
+function fetchStageReports(runId) {
+  if (REPORT_CACHE[runId]) return Promise.resolve(REPORT_CACHE[runId]);
+  return fetch('/api/run-report?run=' + encodeURIComponent(runId))
+    .then((r) => r.json()).then((d) => { if (!d.error) REPORT_CACHE[runId] = d; return d; })
+    .catch(() => null);
+}
+
+// Compact infographic for the Studio 3D side panel (inline-styled, scoped here).
+function stageReportMini(stageId, d) {
+  if (!d || d._truncated) return '';
+  const chips = (items) => '<div class="sr-chips">' + items.map((it) =>
+    '<div class="sr-chip"><b>' + (it.n || 0) + '</b><span>' + esc(it.l) + '</span></div>').join('') + '</div>';
+  const gate = (g) => g ? '<div class="sr-gate ' + (g.ready ? 'ok' : 'bad') + '">' +
+    (g.ready ? 'Release gate: READY' : 'Release gate: BLOCKED') + '</div>' : '';
+  switch (stageId) {
+    case '12-security-threat-model': {
+      const by = { HIGH: 0, MEDIUM: 0, LOW: 0 };
+      (d.threats || []).forEach((t) => { const s = String(t.severity || '').toUpperCase(); if (by[s] != null) by[s]++; });
+      return '<div class="sr-sev"><span class="sr-dot" style="background:#dc2626"></span>' + by.HIGH + ' high · ' +
+        '<span class="sr-dot" style="background:#d97706"></span>' + by.MEDIUM + ' med · ' +
+        '<span class="sr-dot" style="background:#16a34a"></span>' + by.LOW + ' low</div>' + gate(d.release_gate);
+    }
+    case '13-compliance-checker':
+      return '<div class="sr-score">' + (d.overall_score || 0) + '<span>/100</span></div>' + gate(d.release_gate);
+    case '08-testing': {
+      let p = 0, f = 0; const res = d.results || {};
+      Object.keys(res).forEach((k) => { if (res[k] && typeof res[k] === 'object') { p += +res[k].passed || 0; f += +res[k].failed || 0; } });
+      return chips([{ n: p, l: 'passed' }, { n: f, l: 'failed' }, { n: (d.coverage_gaps || []).length, l: 'gaps' }]);
+    }
+    case '14-cost-estimation':
+      return '<div class="sr-score">$' + (Number(d.monthly_cost_usd) || 0) + '<span>/mo</span></div>';
+    case '02-requirements':
+      return chips([{ n: (d.functional || []).length, l: 'reqs' }, { n: (d.user_stories || []).length, l: 'stories' }]);
+    case '06-architecture':
+      return chips([{ n: (d.components || []).length, l: 'components' }, { n: (d.trade_offs || []).length, l: 'trade-offs' }]);
+    case '10-summary':
+      return chips([{ n: (d.open_risks || []).length, l: 'risks' }, { n: (d.next_steps || []).length, l: 'next' }]) + gate(d.release_gate);
+    case '04-planning':
+      return chips([{ n: (d.milestones || []).length, l: 'milestones' }, { n: (d.tasks || []).length, l: 'tasks' }]);
+    case '07-code':
+      return chips([{ n: (d.files_modified || []).length, l: 'files' }, { n: (d.known_concerns || []).length, l: 'concerns' }]);
+    default:
+      return d.status ? '<div class="sr-status mono">' + esc(String(d.status).replace(/_/g, ' ')) + '</div>' : '';
+  }
 }
 
 function openManagerPanel() {
