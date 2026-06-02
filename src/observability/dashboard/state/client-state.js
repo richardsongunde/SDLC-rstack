@@ -10,6 +10,13 @@ export function toClientState(state) {
       timeline: (run.timeline ?? []).slice(0, 120),
       totals: run.totals ?? null,
       stageElapsed: run.stageElapsed ?? {},
+      approvals: (run.approvals ?? []).slice(0, 40).map((approval) => ({
+        artifact: approval.artifact,
+        status: approval.status,
+        approver: approval.approver,
+        timestamp: approval.timestamp,
+      })),
+      startedBy: run.manifest?.started_by?.name ?? null,
       requirements: (run.requirements ?? []).slice(0, 15).map((req) => ({
         id: req.id ?? req.req_id ?? '',
         area: req.area ?? req.category ?? '',
@@ -87,5 +94,7 @@ export function toClientState(state) {
     trends: state.trends
       ? { stages: state.trends.stages ?? {}, runs: (state.trends.runs ?? []).slice(0, 30) }
       : { stages: {}, runs: [] },
+    people: (state.people ?? []).slice(0, 60),
+    presence: (state.presence ?? []).slice(0, 40),
   };
 }

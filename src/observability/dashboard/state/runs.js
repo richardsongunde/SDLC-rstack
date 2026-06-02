@@ -102,13 +102,14 @@ export async function getRunsForRoot(projectRoot) {
     const runDir = join(runsDir, runId);
     const stagesDir = join(runDir, 'artifacts', 'stages');
 
-    const [manifest, metrics, tasksRaw, contextText, planText, requirements] = await Promise.all([
+    const [manifest, metrics, tasksRaw, contextText, planText, requirements, runApprovals] = await Promise.all([
       readJson(join(runDir, 'manifest.json'), {}),
       readJson(join(runDir, 'metrics.json'), {}),
       readJson(join(runDir, 'tasks.json'), null),
       readFile(join(runDir, 'context.md'), 'utf8').catch(() => ''),
       readFile(join(runDir, 'plan.md'), 'utf8').catch(() => ''),
       readJson(join(stagesDir, '02-requirements', 'requirements.json'), null),
+      readJson(join(runDir, 'approvals.json'), []),
     ]);
 
     const rawTasks = Array.isArray(tasksRaw)
@@ -135,6 +136,7 @@ export async function getRunsForRoot(projectRoot) {
       tasks,
       events,
       evidence,
+      approvals: Array.isArray(runApprovals) ? runApprovals : [],
       activityTimeline: buildActivityTimeline(events),
       timeline: deriveRunTimeline(events, rawTasks),
       totals: deriveRunTotals(events),
