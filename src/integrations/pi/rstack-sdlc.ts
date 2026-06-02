@@ -13,7 +13,7 @@ import { getCanonicalStage, stageArtifactRelativePath } from "../../core/harness
 import { validateBuilderContract } from "../../core/harness/contracts.js";
 import { appendEvidenceEvent } from "../../core/harness/evidence.js";
 import { DEFAULT_HARNESS_GUARDRAILS, guardrailSummary } from "../../core/harness/guardrails.js";
-import { prepareRunState, prepareStageFolders, createStageCheckpoint, rollbackStage } from "../../core/harness/run-state.js";
+import { prepareRunState, prepareStageFolders, createStageCheckpoint, rollbackStage, updateRunMetrics } from "../../core/harness/run-state.js";
 import { appendEpisode, appendLearning, episodeFromValidation, formatEpisodesForPrompt, projectMemoryDir, readMemoryConfig, recallEpisodes, sanitizeMemoryText, searchLearnings, writeRetrievalEvent } from "../../memory/index.js";
 import { buildRunReport, generateRunReport, renderDashboardHtml, renderTraceHtml } from "../../observability/collectors/reporter.js";
 import { sendSlackNotification, formatSlackStageMessage, formatSlackTaskReportMessage } from "../../notifications/index.js";
@@ -1401,6 +1401,22 @@ export default function (pi: ExtensionAPI) {
             // consumers can normalize with this count.
             stages_in_task: canonicalStageIds.length,
           });
+        }
+        // Persist per-stage metrics so metrics.json reflects reality — the
+        // stage_elapsed_ms / stage_status structures existed but were never written.
+        try {
+          const runDir = join(runsDir(projectRoot), manifest.run_id);
+          const stageElapsed: Record<string, number> = {};
+          const stageStatus: Record<string, string> = {};
+          for (const stageId of canonicalStageIds) {
+            stageElapsed[stageId] = elapsedMs;
+            stageStatus[stageId] = "PASS";
+          }
+          if (canonicalStageIds.length > 0) {
+            await updateRunMetrics(runDir, { stage_elapsed_ms: stageElapsed, stage_status: stageStatus });
+          }
+        } catch (metricsError) {
+          console.error("Failed to update run metrics:", metricsError);
         }
         // Checkpoint each canonical stage the task produced. createStageCheckpoint
         // requires a canonical stage id — passing task.id threw on every plan task,

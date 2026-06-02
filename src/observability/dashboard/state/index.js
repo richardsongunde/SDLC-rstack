@@ -9,6 +9,7 @@ import { buildAgentGroups, buildAgentWork } from './agent-work.js';
 import { buildTraceMap } from './traceability.js';
 import { buildProjectSummaries } from './projects.js';
 import { buildDiagnostics, buildLayerSummaries } from './layers.js';
+import { buildStageTrends } from '../../metrics/derive.js';
 export { toClientState } from './client-state.js';
 export { resolveApprovalAcrossRoots } from './approvals.js';
 
@@ -21,8 +22,9 @@ export async function buildFullState(projectRoot, options = {}) {
     getAllApprovals(roots),
   ]);
 
-  const totalCost = runs.reduce((sum, run) => sum + (run.metrics?.cumulative_cost_usd ?? 0), 0);
-  const tokenTotal = runs.reduce((sum, run) => sum + Number(run.metrics?.cumulative_tokens ?? run.metrics?.total_tokens ?? 0), 0);
+  // Prefer event-derived totals (single source of truth); fall back to metrics.json.
+  const totalCost = runs.reduce((sum, run) => sum + (run.totals?.cost_usd || run.metrics?.cumulative_cost_usd || 0), 0);
+  const tokenTotal = runs.reduce((sum, run) => sum + (run.totals?.tokens || Number(run.metrics?.cumulative_tokens ?? run.metrics?.total_tokens ?? 0)), 0);
   const activeRuns = runs.filter((run) => run.derivedStatus === 'active');
   const today = new Date().toISOString().slice(0, 10);
   const todayRuns = runs.filter((run) => run.manifest?.created_at?.startsWith(today));
@@ -36,6 +38,7 @@ export async function buildFullState(projectRoot, options = {}) {
   const agentGroups = buildAgentGroups(agentWork);
   const projectSummaries = buildProjectSummaries(runs, roots);
   const traceMap = await buildTraceMap(runs, projectRoot);
+  const trends = buildStageTrends(runs);
 
   const alertInputs = {
     runs,
@@ -69,6 +72,7 @@ export async function buildFullState(projectRoot, options = {}) {
     agentWork,
     agentGroups,
     projectSummaries,
+    trends,
     diagnostics: buildDiagnostics(runs, roots),
     ts: new Date().toISOString(),
   };
