@@ -5,10 +5,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { readdir, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 
-const REPO_ROOT = path.resolve(import.meta.dirname, '..');
+const REPO_ROOT = path.resolve(fileURLToPath(import.meta.url), '..', '..');
 
 async function walk(dir, predicate = () => true) {
   if (!existsSync(dir)) return [];

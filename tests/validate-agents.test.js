@@ -7,10 +7,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { readdir, readFile, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 
-const REPO_ROOT = path.resolve(import.meta.dirname, '..');
+const REPO_ROOT = path.resolve(fileURLToPath(import.meta.url), '..', '..');
 const AGENTS_DIR = path.join(REPO_ROOT, 'agents');
 
 const NAME_REGEX = /^[a-z0-9][a-z0-9.-]*$/;

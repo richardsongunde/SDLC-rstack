@@ -5,10 +5,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 
-const REPO_ROOT = path.resolve(import.meta.dirname, '..');
+const REPO_ROOT = path.resolve(fileURLToPath(import.meta.url), '..', '..');
 
 async function readJson(relPath) {
   return JSON.parse(await readFile(path.join(REPO_ROOT, relPath), 'utf8'));
