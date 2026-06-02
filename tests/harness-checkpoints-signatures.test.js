@@ -117,11 +117,6 @@ test('RStack Checkpoints, Signatures, & Model Escalation E2E', async (t) => {
     const fs = await import('node:fs/promises');
     await fs.writeFile(eventsPath, mockEvents.map(e => JSON.stringify(e)).join('\n') + '\n');
 
-    // Run sdlc_delegate or standard builder prep and check escalated model
-    const registry = [
-      { id: 'agent.00-environment', name: 'agent.00-environment', kind: 'agent', path: 'agents/00-environment.md', domains: ['env'], stageAffinity: [] }
-    ];
-    
     // Create mock agent file
     const agentDir = join(projectRoot, 'agents');
     mkdirSync(agentDir, { recursive: true });
@@ -130,7 +125,7 @@ test('RStack Checkpoints, Signatures, & Model Escalation E2E', async (t) => {
     // Override process env to escalate to gemini-2.5-pro on attempts >= 2
     process.env.RSTACK_ESCALATED_MODEL = 'gemini-2.5-pro-escalated';
 
-    const res = await mockPi.tools.sdlc_delegate.execute('2', {
+    await mockPi.tools.sdlc_delegate.execute('2', {
       agent: 'agent.00-environment',
       task: 'Check environment setup',
     });

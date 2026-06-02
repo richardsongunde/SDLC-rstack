@@ -217,7 +217,6 @@ export function renderDashboardHtml(report) {
   const tasks = Object.values(report.tasks);
   const passCount      = tasks.filter((t) => t.status === 'PASS').length;
   const failCount      = tasks.filter((t) => t.status === 'FAIL').length;
-  const activeCount    = tasks.filter((t) => !t.status || t.status === 'PENDING' || t.status === 'READY' || t.status === 'IN_PROGRESS').length;
   const totalTools     = tasks.reduce((s, t) => s + t.tool_call_count, 0);
   const totalGuardrail = tasks.reduce((s, t) => s + t.guardrail_hit_count, 0);
 

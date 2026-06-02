@@ -25,7 +25,7 @@ const mockPi = {
   registerCommand(name, command) { this.commands[name] = command; },
 };
 
-test('sdlc_validate attributes stage_completed to canonical stages, not task ids', async (t) => {
+test('sdlc_validate attributes stage_completed to canonical stages, not task ids', async () => {
   const projectRoot = mkdtempSync(join(tmpdir(), 'rstack-stage-attr-'));
   const previousProjectRoot = process.env.RSTACK_PROJECT_ROOT;
   const previousWebhook = process.env.RSTACK_SLACK_WEBHOOK;
