@@ -71,8 +71,10 @@ test('resources_discover returns only project-local override resources', async (
   const discovered = await handlers.get('resources_discover')();
   assert.equal(discovered, undefined, 'package-local skills/prompts are declared in package.json and should not be rediscovered by the extension');
 
-  const source = await readFile(path.join(REPO_ROOT, 'extensions', 'rstack-sdlc.ts'), 'utf8');
+  // Read the real extension source (extensions/rstack-sdlc.ts is a re-export shim).
+  const source = await readFile(path.join(REPO_ROOT, 'src', 'integrations', 'pi', 'rstack-sdlc.ts'), 'utf8');
   const handlerSource = source.slice(source.indexOf('pi.on("resources_discover"'), source.indexOf('pi.on("session_start"'));
+  assert.ok(handlerSource.length > 0, 'resources_discover handler should exist in the real extension source');
   assert.equal(handlerSource.includes('packageSkillsDir()'), false);
   assert.equal(handlerSource.includes('packagePromptsDir()'), false);
 });

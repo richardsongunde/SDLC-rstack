@@ -14,7 +14,7 @@
  * The project root is taken from RSTACK_PROJECT_ROOT (set by the Python side) so
  * this script can run from the package directory while operating on the user's repo.
  */
-import activate from "../extensions/rstack-sdlc.ts";
+import activate from "../src/integrations/pi/rstack-sdlc.ts";
 
 type RegisteredTool = {
   name: string;
