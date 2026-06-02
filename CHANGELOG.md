@@ -5,6 +5,20 @@
 All notable changes to RStack are documented here. Entries are user-focused:
 what you can now do that you couldn't before.
 
+## [1.2.0] - 2026-06-02
+
+### Added
+- **One-command setup: `npx rstack-agents init`.** You can now drop RStack into
+  any project in under two minutes. It auto-detects your host framework
+  (Pi, Claude Code, Operator — or custom), creates the `.rstack/` state
+  directory, registers the project with the Business Hub, writes
+  framework-specific scaffolding, and prints exactly what to do next.
+  Running it twice is safe — it never overwrites your files.
+- **Per-framework integration guides** under `docs/integrations/` — including
+  the full adapter contract for plugging RStack into any agent framework.
+- **`RSTACK_REGISTRY_DIR`** environment override for the global project
+  registry, so CI and tests never touch your real `~/.rstack`.
+
 ## [1.1.0] - 2026-06-02
 
 ### Added
