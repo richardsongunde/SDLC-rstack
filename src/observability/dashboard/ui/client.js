@@ -149,6 +149,7 @@ var PAGE_SUBS = {
   command: 'Operational overview across every known .rstack project, run, agent action, approval and alert.',
   workflow: 'The canonical SDLC flow, grouped by stage with pass, fail, active and ready counts from real run tasks.',
   projects: 'All registered project roots and their run sessions, costs, task status and activity timeline.',
+  'run-analytics': 'Wall-clock run timelines, per-stage durations and run-over-run delivery trends derived from events.jsonl.',
   'agent-work': 'Builder and validator work grouped by project, run, stage and agent contract.',
   'live-feed': 'Real-time event stream from events.jsonl plus live WebSocket refreshes.',
   approvals: 'Human-in-loop actions from the approval queue only.',
@@ -180,6 +181,7 @@ function applyState(state) {
   try { renderCommand(state); } catch (err) { showErr('command: ' + err.message); }
   try { renderWorkflow(state); } catch (err) { showErr('workflow: ' + err.message); }
   try { renderProjects(state); } catch (err) { showErr('projects: ' + err.message); }
+  try { renderRunAnalytics(state); } catch (err) { showErr('run analytics: ' + err.message); }
   try { renderAgentWork(state); } catch (err) { showErr('agent work: ' + err.message); }
   try { renderLiveFeed(state); } catch (err) { showErr('live feed: ' + err.message); }
   try { renderApprovals(state); } catch (err) { showErr('approvals: ' + err.message); }
@@ -589,9 +591,10 @@ function renderProjects(s) {
       '<td><div class="strong">' + esc((run.manifest && run.manifest.goal) || run.runId) + '</div><div class="faint mono">' + esc(run.runId) + '</div></td>' +
       '<td class="mono muted">' + esc(project) + '</td>' +
       '<td><span class="strong">' + passed + '</span><span class="muted">/' + tasks.length + '</span></td>' +
-      '<td class="mono muted">$' + Number((run.metrics || {}).cumulative_cost_usd || 0).toFixed(4) + '</td>' +
+      '<td class="mono muted">' + fmtDur((run.totals || {}).duration_ms) + '</td>' +
+      '<td class="mono muted">$' + Number((run.totals || {}).cost_usd || (run.metrics || {}).cumulative_cost_usd || 0).toFixed(4) + '</td>' +
     '</tr>';
-  }).join('') || '<tr><td colspan="5" class="empty">No runs yet</td></tr>');
+  }).join('') || '<tr><td colspan="6" class="empty">No runs yet</td></tr>');
 }
 
 function renderAgentWork(s) {
@@ -747,6 +750,115 @@ function groupAgentWork(work) {
   return Object.keys(groups).map(function(key) { return groups[key]; });
 }
 
+var ANALYTICS_RUN_ID = null;
+
+function renderRunAnalytics(s) {
+  var runs = s.runs || [];
+  var select = document.getElementById('analytics-run-select');
+  if (select) {
+    if (!ANALYTICS_RUN_ID || !runs.some(function(run) { return run.runId === ANALYTICS_RUN_ID; })) {
+      ANALYTICS_RUN_ID = runs.length ? runs[0].runId : null;
+    }
+    select.innerHTML = runs.map(function(run) {
+      var label = ((run.manifest && run.manifest.goal) || run.runId).slice(0, 70);
+      return '<option value="' + esc(run.runId) + '"' + (run.runId === ANALYTICS_RUN_ID ? ' selected' : '') + '>' + esc(label) + '</option>';
+    }).join('');
+  }
+  renderAnalyticsRun(ANALYTICS_RUN_ID);
+  renderStageBars(s);
+  renderTrendTable(s);
+}
+
+function renderAnalyticsRun(runId) {
+  ANALYTICS_RUN_ID = runId;
+  var run = ((STATE && STATE.runs) || []).filter(function(item) { return item.runId === runId; })[0];
+  if (!run) {
+    setHTML('analytics-kpis', '');
+    setHTML('analytics-gantt', emptyHtml('No runs yet', 'Run timelines appear once a run records task events.'));
+    return;
+  }
+  var totals = run.totals || {};
+  setHTML('analytics-kpis',
+    '<div class="kpi blue"><div class="kpi-v">' + fmtDur(totals.duration_ms) + '</div><div class="kpi-l">Run Duration</div></div>' +
+    '<div class="kpi blue"><div class="kpi-v">' + (totals.tool_calls || 0) + '</div><div class="kpi-l">Tool Calls</div></div>' +
+    '<div class="kpi green"><div class="kpi-v">' + (totals.tasks_passed || 0) + '</div><div class="kpi-l">Passed</div></div>' +
+    '<div class="kpi red"><div class="kpi-v">' + (totals.tasks_failed || 0) + '</div><div class="kpi-l">Failed</div></div>' +
+    '<div class="kpi amber"><div class="kpi-v">' + (totals.quality_avg !== null && totals.quality_avg !== undefined ? Math.round(totals.quality_avg * 100) + '%' : '-') + '</div><div class="kpi-l">Avg Quality</div></div>' +
+    '<div class="kpi amber"><div class="kpi-v">$' + Number(totals.cost_usd || 0).toFixed(4) + '</div><div class="kpi-l">Cost</div></div>');
+  setHTML('analytics-gantt', ganttHtml(run.timeline || []));
+}
+
+function ganttHtml(segments) {
+  var timed = segments.filter(function(seg) { return seg.started_at; });
+  if (!timed.length) return emptyHtml('No timeline segments', 'task_started / task_validated events build this view.');
+  var start = Math.min.apply(null, timed.map(function(seg) { return Date.parse(seg.started_at); }));
+  var end = Math.max.apply(null, timed.map(function(seg) {
+    return seg.ended_at ? Date.parse(seg.ended_at) : Date.parse(seg.started_at);
+  }));
+  var span = Math.max(1, end - start);
+  return timed.map(function(seg) {
+    var s0 = Date.parse(seg.started_at);
+    var s1 = seg.ended_at ? Date.parse(seg.ended_at) : end;
+    var left = ((s0 - start) / span) * 100;
+    var width = Math.max(0.8, ((s1 - s0) / span) * 100);
+    var cls = seg.status === 'PASS' ? 'pass' : seg.status === 'FAIL' ? 'fail' : 'running';
+    var label = seg.task_id + (seg.attempt > 1 ? ' (attempt ' + seg.attempt + ')' : '');
+    var stages = (seg.stage_ids || []).join(', ');
+    return '<div class="gantt-row">' +
+      '<div class="gantt-label" title="' + esc(stages) + '">' + esc(label) + '</div>' +
+      '<div class="gantt-track">' +
+        '<div class="gantt-bar ' + cls + '" style="left:' + left.toFixed(2) + '%;width:' + width.toFixed(2) + '%" title="' + esc(label + ' — ' + fmtDur(seg.elapsed_ms) + (stages ? ' — ' + stages : '')) + '"></div>' +
+      '</div>' +
+      '<div class="gantt-dur mono">' + (seg.ended_at ? fmtDur(seg.elapsed_ms) : 'running') + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderStageBars(s) {
+  var stages = (s.trends && s.trends.stages) || {};
+  var ids = Object.keys(stages).sort();
+  setText('analytics-stage-count', ids.length + ' stages');
+  if (!ids.length) {
+    setHTML('analytics-stage-bars', emptyHtml('No stage durations yet', 'stage_completed events populate this view.'));
+    return;
+  }
+  var max = Math.max.apply(null, ids.map(function(id) { return stages[id].avg_elapsed_ms || 0; })) || 1;
+  setHTML('analytics-stage-bars', ids.map(function(id) {
+    var stage = stages[id];
+    var width = Math.max(2, ((stage.avg_elapsed_ms || 0) / max) * 100);
+    return '<div class="stage-bar-row">' +
+      '<div class="stage-bar-label mono">' + esc(id) + '</div>' +
+      '<div class="stage-bar-track"><div class="stage-bar-fill" style="width:' + width.toFixed(1) + '%"></div></div>' +
+      '<div class="stage-bar-value mono">' + fmtDur(stage.avg_elapsed_ms) + ' <span class="faint">x' + stage.runs + '</span></div>' +
+    '</div>';
+  }).join(''));
+}
+
+function renderTrendTable(s) {
+  var rows = (s.trends && s.trends.runs) || [];
+  setText('analytics-trend-count', rows.length + ' runs');
+  setHTML('analytics-trend-table', rows.map(function(row) {
+    return '<tr class="clickable" data-runid="' + esc(row.runId) + '" onclick="openDrawerRow(this)">' +
+      '<td><div class="strong">' + esc((row.goal || row.runId).slice(0, 60)) + '</div><div class="faint mono">' + esc(String(row.created_at || '').slice(0, 16)) + '</div></td>' +
+      '<td class="mono">' + fmtDur(row.duration_ms) + '</td>' +
+      '<td class="mono">' + (row.tool_calls || 0) + '</td>' +
+      '<td><span class="strong">' + (row.tasks_passed || 0) + '</span><span class="muted">/' + ((row.tasks_passed || 0) + (row.tasks_failed || 0)) + '</span></td>' +
+      '<td class="mono">' + (row.quality_avg !== null && row.quality_avg !== undefined ? Math.round(row.quality_avg * 100) + '%' : '-') + '</td>' +
+      '<td class="mono muted">$' + Number(row.cost_usd || 0).toFixed(4) + '</td>' +
+    '</tr>';
+  }).join('') || '<tr><td colspan="6" class="empty">No runs yet</td></tr>');
+}
+
+function fmtDur(ms) {
+  ms = Number(ms) || 0;
+  if (ms < 1000) return ms + 'ms';
+  var sec = Math.round(ms / 1000);
+  if (sec < 60) return sec + 's';
+  var min = Math.floor(sec / 60);
+  if (min < 60) return min + 'm ' + (sec % 60) + 's';
+  return Math.floor(min / 60) + 'h ' + (min % 60) + 'm';
+}
+
 function openDrawerRow(row) {
   openDrawer(row.getAttribute('data-runid'));
 }
@@ -758,17 +870,24 @@ function openDrawer(runId) {
   var timeline = run.activityTimeline || [];
   var passed = tasks.filter(function(task) { return task.status === 'PASS'; }).length;
   var failed = tasks.filter(function(task) { return task.status === 'FAIL'; }).length;
-  var calls = timeline.reduce(function(total, item) { return total + (item.toolCalls || 0); }, 0);
+  var totals = run.totals || {};
+  var calls = totals.tool_calls || timeline.reduce(function(total, item) { return total + (item.toolCalls || 0); }, 0);
+  var cost = totals.cost_usd || (run.metrics || {}).cumulative_cost_usd || 0;
   setText('drawer-title', (run.manifest && run.manifest.goal) || run.runId);
   setText('drawer-sub', shortName(run.projectRoot) + ' / ' + run.runId);
   setHTML('drawer-body',
     '<div class="kpi-grid">' +
+      '<div class="kpi blue"><div class="kpi-v">' + fmtDur(totals.duration_ms) + '</div><div class="kpi-l">Duration</div></div>' +
       '<div class="kpi blue"><div class="kpi-v">' + calls + '</div><div class="kpi-l">Tool Calls</div></div>' +
       '<div class="kpi green"><div class="kpi-v">' + passed + '</div><div class="kpi-l">Passed</div></div>' +
       '<div class="kpi red"><div class="kpi-v">' + failed + '</div><div class="kpi-l">Failed</div></div>' +
-      '<div class="kpi amber"><div class="kpi-v">$' + Number((run.metrics || {}).cumulative_cost_usd || 0).toFixed(4) + '</div><div class="kpi-l">Cost</div></div>' +
+      '<div class="kpi amber"><div class="kpi-v">' + (totals.quality_avg !== null && totals.quality_avg !== undefined ? Math.round(totals.quality_avg * 100) + '%' : '-') + '</div><div class="kpi-l">Quality</div></div>' +
+      '<div class="kpi amber"><div class="kpi-v">$' + Number(cost).toFixed(4) + '</div><div class="kpi-l">Cost</div></div>' +
     '</div>' +
-    '<div class="panel"><div class="panel-head"><span class="panel-title">Timeline</span></div><div class="panel-body">' +
+    '<div class="panel"><div class="panel-head"><span class="panel-title">Task Timeline</span></div><div class="panel-body"><div class="gantt">' +
+      ganttHtml(run.timeline || []) +
+    '</div></div></div>' +
+    '<div class="panel"><div class="panel-head"><span class="panel-title">Activity by Minute</span></div><div class="panel-body">' +
       (timeline.map(function(item) {
         return '<div class="feed-row"><div class="feed-icon info">' + (item.toolCalls || 0) + '</div><div><div class="feed-summary">' + esc(item.minute || '') + '</div><div class="feed-meta"><span>' + (item.stagesDone || []).length + ' stages</span><span>' + (item.guardrails || 0) + ' guardrails</span></div></div></div>';
       }).join('') || emptyHtml('No timeline', '')) +

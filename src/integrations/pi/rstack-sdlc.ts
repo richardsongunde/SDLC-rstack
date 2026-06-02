@@ -13,7 +13,7 @@ import { getCanonicalStage, stageArtifactRelativePath } from "../../core/harness
 import { validateBuilderContract } from "../../core/harness/contracts.js";
 import { appendEvidenceEvent } from "../../core/harness/evidence.js";
 import { DEFAULT_HARNESS_GUARDRAILS, guardrailSummary } from "../../core/harness/guardrails.js";
-import { prepareRunState, prepareStageFolders, createStageCheckpoint, rollbackStage } from "../../core/harness/run-state.js";
+import { prepareRunState, prepareStageFolders, createStageCheckpoint, rollbackStage, updateRunMetrics } from "../../core/harness/run-state.js";
 import { appendEpisode, appendLearning, episodeFromValidation, formatEpisodesForPrompt, projectMemoryDir, readMemoryConfig, recallEpisodes, sanitizeMemoryText, searchLearnings, writeRetrievalEvent } from "../../memory/index.js";
 import { buildRunReport, generateRunReport, renderDashboardHtml, renderTraceHtml } from "../../observability/collectors/reporter.js";
 import { sendSlackNotification, formatSlackStageMessage, formatSlackTaskReportMessage } from "../../notifications/index.js";
@@ -1378,15 +1378,59 @@ export default function (pi: ExtensionAPI) {
       }
       await appendEvent(projectRoot, manifest.run_id, { type: "quality_score_recorded", task_id: task.id, score: qualityScore, pass_checks: passChecks, total_checks: checks.length });
       if (status === "PASS") {
-        await appendEvent(projectRoot, manifest.run_id, { type: "stage_completed", stage_id: task.id, task_id: task.id, elapsed_ms: elapsedMs });
+        // Attribute completion to the task's canonical stage(s). Task ids (e.g.
+        // "007-documentation") are plan ids, not canonical stage ids — consumers
+        // (reporter stage aggregation, alerts, stage matrix) key by canonical stage.
+        const canonicalStageIds = [...new Set(
+          (task.stage_artifacts ?? [])
+            .map((artifact: any) => artifact?.stage_id)
+            .filter((id: any) => typeof id === "string" && getCanonicalStage(id)),
+        )];
+        if (canonicalStageIds.length === 0 && getCanonicalStage(task.id)) canonicalStageIds.push(task.id);
+        if (canonicalStageIds.length === 0) {
+          // No canonical mapping — keep the timing signal but never invent a stage id.
+          await appendEvent(projectRoot, manifest.run_id, { type: "stage_completed", stage_id: null, task_id: task.id, elapsed_ms: elapsedMs });
+        }
+        for (const stageId of canonicalStageIds) {
+          await appendEvent(projectRoot, manifest.run_id, {
+            type: "stage_completed",
+            stage_id: stageId,
+            task_id: task.id,
+            elapsed_ms: elapsedMs,
+            // Multi-stage tasks emit one event per stage with the same task elapsed;
+            // consumers can normalize with this count.
+            stages_in_task: canonicalStageIds.length,
+          });
+        }
+        // Persist per-stage metrics so metrics.json reflects reality — the
+        // stage_elapsed_ms / stage_status structures existed but were never written.
         try {
           const runDir = join(runsDir(projectRoot), manifest.run_id);
-          const checkpointSaved = await createStageCheckpoint(runDir, task.id);
-          if (checkpointSaved) {
-            await appendEvent(projectRoot, manifest.run_id, { type: "stage_checkpoint_saved", stage_id: task.id });
+          const stageElapsed: Record<string, number> = {};
+          const stageStatus: Record<string, string> = {};
+          for (const stageId of canonicalStageIds) {
+            stageElapsed[stageId] = elapsedMs;
+            stageStatus[stageId] = "PASS";
           }
-        } catch (cpError) {
-          console.error("Failed to save stage checkpoint:", cpError);
+          if (canonicalStageIds.length > 0) {
+            await updateRunMetrics(runDir, { stage_elapsed_ms: stageElapsed, stage_status: stageStatus });
+          }
+        } catch (metricsError) {
+          console.error("Failed to update run metrics:", metricsError);
+        }
+        // Checkpoint each canonical stage the task produced. createStageCheckpoint
+        // requires a canonical stage id — passing task.id threw on every plan task,
+        // so no checkpoint was ever saved and sdlc_rollback had nothing to restore.
+        for (const stageId of canonicalStageIds) {
+          try {
+            const runDir = join(runsDir(projectRoot), manifest.run_id);
+            const checkpointSaved = await createStageCheckpoint(runDir, stageId);
+            if (checkpointSaved) {
+              await appendEvent(projectRoot, manifest.run_id, { type: "stage_checkpoint_saved", stage_id: stageId, task_id: task.id });
+            }
+          } catch (cpError) {
+            console.error(`Failed to save stage checkpoint for ${stageId}:`, cpError);
+          }
         }
       } else {
         const runDir = join(runsDir(projectRoot), manifest.run_id);
@@ -1419,25 +1463,31 @@ export default function (pi: ExtensionAPI) {
         status: status === "PASS" ? "PASS" : "FAIL",
         evidence: `${task.output_dir}/validation.json`,
       });
-      try {
-        const payload = formatSlackStageMessage(manifest.run_id, task.id, status, {
-          message: status === "PASS"
-            ? `Task validated and advance targets committed. Summary: "${builderContract?.summary || "No summary recorded"}"`
-            : `Harness validation check failed for ${task.id}. Rerouting task to Builder Sandbox for corrections.`,
-          attempt: builderContract?.attempt || "1",
-        });
-        await sendSlackNotification(process.env.RSTACK_SLACK_WEBHOOK, payload);
-        
-        // Dispatch rich task execution report
-        const runDir = join(runsDir(projectRoot), manifest.run_id);
-        const report = await buildRunReport(runDir);
-        const trace = report.tasks[task.id];
-        if (trace) {
-          const reportPayload = formatSlackTaskReportMessage(manifest.run_id, task.id, trace);
-          await sendSlackNotification(process.env.RSTACK_SLACK_WEBHOOK, reportPayload);
+      // Only build/send notification payloads when a webhook is configured —
+      // buildRunReport reads the full event stream + every task dir, which is
+      // wasted I/O on every validation otherwise (and the unconfigured path
+      // dumps whole payloads to the console).
+      if (process.env.RSTACK_SLACK_WEBHOOK) {
+        try {
+          const payload = formatSlackStageMessage(manifest.run_id, task.id, status, {
+            message: status === "PASS"
+              ? `Task validated and advance targets committed. Summary: "${builderContract?.summary || "No summary recorded"}"`
+              : `Harness validation check failed for ${task.id}. Rerouting task to Builder Sandbox for corrections.`,
+            attempt: builderContract?.attempt || "1",
+          });
+          await sendSlackNotification(process.env.RSTACK_SLACK_WEBHOOK, payload);
+
+          // Dispatch rich task execution report
+          const runDir = join(runsDir(projectRoot), manifest.run_id);
+          const report = await buildRunReport(runDir);
+          const trace = report.tasks[task.id];
+          if (trace) {
+            const reportPayload = formatSlackTaskReportMessage(manifest.run_id, task.id, trace);
+            await sendSlackNotification(process.env.RSTACK_SLACK_WEBHOOK, reportPayload);
+          }
+        } catch (err) {
+          console.error("Failed to send Slack validation notification:", err);
         }
-      } catch (err) {
-        console.error("Failed to send Slack validation notification:", err);
       }
       try {
         const registry = await loadRegistry(projectRoot);

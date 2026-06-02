@@ -1002,4 +1002,33 @@ tr.clickable:hover td { background: #f8fbff; }
   .workspace-stage-card { min-height: 0; }
   .inspector-io div { grid-template-columns: 1fr; }
 }
+
+/* ── Run Analytics: Gantt timeline, stage duration bars, trends ───────────── */
+.run-select {
+  font: inherit; font-size: 12px; color: var(--text);
+  border: 1px solid var(--line-strong); border-radius: 6px;
+  padding: 4px 8px; background: var(--panel); max-width: 340px;
+}
+.gantt { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
+.gantt-row { display: grid; grid-template-columns: 200px minmax(0, 1fr) 90px; gap: 10px; align-items: center; }
+.gantt-label { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gantt-track { position: relative; height: 18px; background: var(--soft); border-radius: 4px; overflow: hidden; }
+.gantt-bar { position: absolute; top: 2px; bottom: 2px; border-radius: 3px; min-width: 4px; }
+.gantt-bar.pass { background: var(--green); }
+.gantt-bar.fail { background: var(--red); }
+.gantt-bar.running { background: var(--blue); animation: gantt-pulse 1.6s ease-in-out infinite; }
+.gantt-dur { font-size: 11px; color: var(--muted); text-align: right; }
+@keyframes gantt-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+
+.stage-bars { display: flex; flex-direction: column; gap: 6px; }
+.stage-bar-row { display: grid; grid-template-columns: 180px minmax(0, 1fr) 110px; gap: 10px; align-items: center; }
+.stage-bar-label { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stage-bar-track { height: 12px; background: var(--soft); border-radius: 4px; overflow: hidden; }
+.stage-bar-fill { height: 100%; background: var(--blue); border-radius: 4px; }
+.stage-bar-value { font-size: 11px; color: var(--muted); text-align: right; }
+
+@media (max-width: 900px) {
+  .gantt-row { grid-template-columns: 120px minmax(0, 1fr) 70px; }
+  .stage-bar-row { grid-template-columns: 110px minmax(0, 1fr) 90px; }
+}
 `;

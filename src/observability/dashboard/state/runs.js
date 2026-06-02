@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { CANONICAL_SDLC_STAGES } from '../../../core/harness/stages.js';
+import { deriveRunTimeline, deriveRunTotals, deriveStageElapsed } from '../../metrics/derive.js';
 import { readJson, readJsonlSync } from './files.js';
 
 // owner: RStack developed by Richardson Gunde
@@ -28,7 +29,7 @@ export function buildActivityTimeline(events) {
     }
     const m = minutes[min];
     if (ev.type === 'tool_call') m.toolCalls++;
-    if (ev.type === 'stage_completed') m.stagesDone.push(ev.stage_id ?? '');
+    if (ev.type === 'stage_completed' && ev.stage_id) m.stagesDone.push(ev.stage_id);
     if (ev.type === 'task_validated' && ev.status === 'PASS') m.tasksPassed++;
     if (ev.type === 'task_validated' && ev.status === 'FAIL') m.tasksFailed++;
     if (ev.type === 'guardrail_triggered' || ev.type === 'approval_gate_blocked') m.guardrails++;
@@ -135,6 +136,9 @@ export async function getRunsForRoot(projectRoot) {
       events,
       evidence,
       activityTimeline: buildActivityTimeline(events),
+      timeline: deriveRunTimeline(events, rawTasks),
+      totals: deriveRunTotals(events),
+      stageElapsed: deriveStageElapsed(events, rawTasks),
       derivedStatus: deriveRunStatus(manifest, events),
       host: inferHost(manifest),
       brief,

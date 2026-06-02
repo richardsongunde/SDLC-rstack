@@ -7,6 +7,9 @@ export function toClientState(state) {
     return {
       ...rest,
       evidenceCount: (evidence ?? []).length,
+      timeline: (run.timeline ?? []).slice(0, 120),
+      totals: run.totals ?? null,
+      stageElapsed: run.stageElapsed ?? {},
       requirements: (run.requirements ?? []).slice(0, 15).map((req) => ({
         id: req.id ?? req.req_id ?? '',
         area: req.area ?? req.category ?? '',
@@ -81,5 +84,8 @@ export function toClientState(state) {
       runId: work.runId,
     })),
     agentGroups: (state.agentGroups ?? []).slice(0, 40),
+    trends: state.trends
+      ? { stages: state.trends.stages ?? {}, runs: (state.trends.runs ?? []).slice(0, 30) }
+      : { stages: {}, runs: [] },
   };
 }
