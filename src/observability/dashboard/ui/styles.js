@@ -1031,4 +1031,15 @@ tr.clickable:hover td { background: #f8fbff; }
   .gantt-row { grid-template-columns: 120px minmax(0, 1fr) 70px; }
   .stage-bar-row { grid-template-columns: 110px minmax(0, 1fr) 90px; }
 }
+
+/* ── Scope switcher + Team & Presence ─────────────────────────────────────── */
+.tb-scope { display: flex; gap: 8px; align-items: center; margin-left: 16px; }
+.tb-scope .run-select { max-width: 220px; }
+.presence-dot {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--faint); margin-right: 8px; vertical-align: middle;
+}
+.presence-dot.live { background: var(--green); animation: presence-pulse 1.8s ease-in-out infinite; }
+@keyframes presence-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(21, 128, 61, 0.4); } 50% { box-shadow: 0 0 0 5px rgba(21, 128, 61, 0); } }
+@media (max-width: 900px) { .tb-scope { display: none; } }
 `;

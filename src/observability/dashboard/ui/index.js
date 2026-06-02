@@ -37,6 +37,10 @@ export function dashboardHtml(port) {
   <main id="main">
     <header id="topbar">
       <div class="tb-title" id="page-title">Command Center</div>
+      <div class="tb-scope">
+        <select class="run-select" id="scope-project" onchange="setScopeProject(this.value)" title="Project scope"><option value="">All projects</option></select>
+        <select class="run-select" id="scope-run" onchange="setScopeRun(this.value)" title="Run scope"><option value="">All runs</option></select>
+      </div>
       <div class="tb-status"><span class="status-dot status-connecting" id="status-dot"></span><span id="status-text">Loading...</span></div>
       <div class="tb-actions">
         <button class="tb-chip" id="btn-alerts" onclick="showPage('alerts-guardrails')">Alerts <span id="alert-count">-</span></button>
