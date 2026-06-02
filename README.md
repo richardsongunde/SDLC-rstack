@@ -48,6 +48,14 @@ npx rstack-agents@latest validate && npm test
 
 ## Install
 
+One command sets up any project for any host framework — Pi, Claude Code, Operator, or custom
+(see [docs/integrations/](docs/integrations/README.md)):
+
+```bash
+npx rstack-agents init            # auto-detects your framework
+npx rstack-agents init -f pi      # or be explicit: pi | claude-code | operator | custom
+```
+
 <details open>
 <summary><strong>Pi, native adapter, recommended</strong></summary>
 
