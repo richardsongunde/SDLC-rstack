@@ -5,6 +5,19 @@
 All notable changes to RStack are documented here. Entries are user-focused:
 what you can now do that you couldn't before.
 
+## [1.6.0] - 2026-06-02
+
+### Added
+- **Studio 3D** at `/studio3d` — the full three.js workspace, live. Fifteen
+  robot workstations along a conveyor, each monitor showing its agent's
+  persona and live status; work packets flow while agents are building. Walk
+  up to any agent and click: **what they worked on, what they shipped, and
+  why they're waiting** (approval gate, upstream stages, or a failed
+  attempt). Click the Manager for the run briefing — who started it, the
+  numbers, the approvals — and jump back into the Business Hub scoped to
+  that run. Pick any run session from the selector; share it with `#run=`
+  links. Reached from the Studio page via "Enter the 3D Studio →".
+
 ## [1.5.0] - 2026-06-02
 
 ### Added
