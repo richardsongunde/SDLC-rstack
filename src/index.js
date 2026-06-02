@@ -6,10 +6,8 @@
  *   src/core/tracker/   — project registry, approval queue
  *   src/memory/         — episodic memory and diagnostics
  *   src/notifications/  — Slack / Discord / Teams webhooks
- *   src/alerts/         — threshold evaluation, plain-language summaries
+ *   src/observability/  — collectors (reporter, legacy dashboard), Business Hub dashboard, alerts
  *   src/hooks/          — auto-launch helpers
- *   src/observers/      — reporter and legacy static dashboard helpers
- *   src/dashboard/      — Business Hub server and redesigned UI
  *   src/commands/       — CLI commands (list, validate)
  *   src/utils/          — shared utilities
  */
@@ -29,7 +27,7 @@ export { runMemoryDiagnostics } from './memory/diagnostics.js';
 export { sendSlackNotification, formatSlackStageMessage, formatSlackTaskReportMessage } from './notifications/index.js';
 
 // ── Alerts ────────────────────────────────────────────────────────────────────
-export { evaluateAlerts, plainLanguageSummary, DEFAULT_ALERT_THRESHOLDS } from './alerts/engine.js';
+export { evaluateAlerts, plainLanguageSummary, DEFAULT_ALERT_THRESHOLDS } from './observability/alerts/engine.js';
 
 // ── Tracker ───────────────────────────────────────────────────────────────────
 export { registerProject, readRegistry, knownProjectRoots } from './core/tracker/registry.js';
@@ -39,8 +37,8 @@ export { readApprovals, appendApproval, resolveApproval, pendingApprovals, appro
 export { autoLaunchBusinessHub } from './hooks/auto-launch.js';
 
 // ── Observers ─────────────────────────────────────────────────────────────────
-export { generateRunReport } from './observers/reporter.js';
-export { startDashboardServer } from './observers/legacy.js';
+export { generateRunReport } from './observability/collectors/reporter.js';
+export { startDashboardServer } from './observability/collectors/legacy.js';
 
 // ── Commands ──────────────────────────────────────────────────────────────────
 export { listAgents, listSkills, listPlugins, addPlugin } from './commands/list.js';

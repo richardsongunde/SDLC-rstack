@@ -15,7 +15,7 @@ import { appendEvidenceEvent } from "../src/core/harness/evidence.js";
 import { DEFAULT_HARNESS_GUARDRAILS, guardrailSummary } from "../src/core/harness/guardrails.js";
 import { prepareRunState, prepareStageFolders, createStageCheckpoint, rollbackStage } from "../src/core/harness/run-state.js";
 import { appendEpisode, appendLearning, episodeFromValidation, formatEpisodesForPrompt, projectMemoryDir, readMemoryConfig, recallEpisodes, sanitizeMemoryText, searchLearnings, writeRetrievalEvent } from "../src/memory/index.js";
-import { buildRunReport, generateRunReport, renderDashboardHtml, renderTraceHtml } from "../src/observers/reporter.js";
+import { buildRunReport, generateRunReport, renderDashboardHtml, renderTraceHtml } from "../src/observability/collectors/reporter.js";
 import { sendSlackNotification, formatSlackStageMessage, formatSlackTaskReportMessage } from "../src/notifications/index.js";
 
 const RSTACK_VERSION = "0.3.0";
