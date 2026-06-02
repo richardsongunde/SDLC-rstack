@@ -8,6 +8,7 @@ import { dashboardHtml } from './ui.js';
 import { studio3dHtml } from './ui/studio3d.js';
 import { buildFullState, resolveDashboardApproval, toClientState } from './state/index.js';
 import { sourceRoots } from './state/roots.js';
+import { collectStageReports } from './state/stage-reports.js';
 
 // owner: RStack developed by Richardson Gunde
 
@@ -184,6 +185,33 @@ async function handleApproval(req, res, decision) {
 const ARTIFACT_MAX_BYTES = 512 * 1024;
 const ARTIFACT_EXTENSIONS = new Set(['.md', '.json', '.jsonl', '.txt', '.yml', '.yaml']);
 
+// Locate a run directory by id across the known project roots, rejecting any
+// id that could traverse the filesystem. Returns null if not found / unsafe.
+async function resolveRunDir(runId) {
+  if (!runId || runId.includes('/') || runId.includes('..') || runId.includes('\\')) return null;
+  const roots = await sourceRoots(PROJECT_ROOT, {});
+  return roots
+    .map((root) => join(root, '.rstack', 'runs', runId))
+    .find((dir) => existsSync(dir)) ?? null;
+}
+
+async function handleRunReport(url, res) {
+  const sendJson = (status, body) => {
+    res.writeHead(status, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(body));
+  };
+  try {
+    const runId = url.searchParams.get('run') ?? '';
+    if (!runId) return sendJson(400, { error: 'run is required' });
+    const runDir = await resolveRunDir(runId);
+    if (!runDir) return sendJson(404, { error: 'run not found' });
+    const { stages, deliverables } = await collectStageReports(runDir);
+    sendJson(200, { run: runId, stages, deliverables });
+  } catch (err) {
+    sendJson(500, { error: String(err?.message) });
+  }
+}
+
 async function handleArtifact(url, res) {
   const sendJson = (status, body) => {
     res.writeHead(status, { 'Content-Type': 'application/json' });
@@ -193,12 +221,7 @@ async function handleArtifact(url, res) {
     const runId = url.searchParams.get('run') ?? '';
     const relPath = url.searchParams.get('path') ?? '';
     if (!runId || !relPath) return sendJson(400, { error: 'run and path are required' });
-    if (runId.includes('/') || runId.includes('..')) return sendJson(400, { error: 'invalid run id' });
-
-    const roots = await sourceRoots(PROJECT_ROOT, {});
-    const runDir = roots
-      .map((root) => join(root, '.rstack', 'runs', runId))
-      .find((dir) => existsSync(dir));
+    const runDir = await resolveRunDir(runId);
     if (!runDir) return sendJson(404, { error: 'run not found' });
 
     const target = resolve(runDir, relPath);
@@ -270,6 +293,11 @@ const server = createServer(async (req, res) => {
 
   if (url.pathname === '/api/artifact' && req.method === 'GET') {
     await handleArtifact(url, res);
+    return;
+  }
+
+  if (url.pathname === '/api/run-report' && req.method === 'GET') {
+    await handleRunReport(url, res);
     return;
   }
 

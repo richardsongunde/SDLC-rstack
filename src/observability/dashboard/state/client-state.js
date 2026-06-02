@@ -11,6 +11,7 @@ export function toClientState(state) {
         ts: entry.ts, task_id: entry.task_id, kind: entry.kind, status: entry.status, evidence: entry.evidence,
       })),
       artifactIndex: (run.artifactIndex ?? []).slice(0, 80),
+      stageReports: run.stageReports ?? [],
       timeline: (run.timeline ?? []).slice(0, 120),
       totals: run.totals ?? null,
       stageElapsed: run.stageElapsed ?? {},
