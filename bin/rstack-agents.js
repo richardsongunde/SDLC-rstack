@@ -3,6 +3,7 @@
  * rstack-agents CLI entry point.
  *
  * Commands:
+ *   rstack-agents init [--framework pi|claude-code|operator|custom]
  *   rstack-agents list <agents|skills|plugins>
  *   rstack-agents add plugin <name>
  *   rstack-agents validate
@@ -12,6 +13,7 @@ import { Command } from 'commander';
 import chalk from 'chalk';
 import { listAgents, listSkills, listPlugins, addPlugin } from '../src/commands/list.js';
 import { validateCommand } from '../src/commands/validate.js';
+import { initFramework, detectFramework, FRAMEWORKS } from '../src/integrations/init.js';
 import { log } from '../src/utils/logger.js';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -79,6 +81,31 @@ program
         process.exit(1);
       }
       await addPlugin(name);
+    } catch (err) {
+      log.error(err.message);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('init')
+  .description('Set up RStack SDLC in the current project for a host framework')
+  .option('-f, --framework <framework>', `host framework: ${FRAMEWORKS.join(' | ')} (auto-detected if omitted)`)
+  .option('-p, --project <path>', 'project root (defaults to current directory)')
+  .action(async (opts) => {
+    try {
+      const projectRoot = opts.project ?? process.cwd();
+      const framework = opts.framework ?? await detectFramework(projectRoot);
+      if (!opts.framework) {
+        console.log(chalk.dim(`[rstack] No --framework given — detected: ${framework}`));
+      }
+      const report = await initFramework(projectRoot, framework, { packageRoot: resolve(__dirname, '..') });
+      console.log(chalk.bold(`\n[rstack] init complete — framework: ${report.framework}`));
+      for (const item of report.created) console.log(chalk.green(`  + ${item}`));
+      for (const item of report.skipped) console.log(chalk.dim(`  = ${item}`));
+      console.log(chalk.bold('\nNext steps:'));
+      for (const step of report.nextSteps) console.log(`  ${step}`);
+      console.log('');
     } catch (err) {
       log.error(err.message);
       process.exit(1);

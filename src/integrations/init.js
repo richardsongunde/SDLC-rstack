@@ -1,0 +1,151 @@
+/**
+ * rstack-agents init — one-command setup of RStack SDLC in any project,
+ * for any host framework (Pi, Claude Code, Operator, or custom).
+ *
+ * Design rules:
+ *   - Idempotent: running twice is safe; existing files are never overwritten.
+ *   - Non-destructive: we create new files and print instructions — we never
+ *     rewrite a user's settings.json / CLAUDE.md in place.
+ *   - Honest: every report lists exactly what was created, what was skipped,
+ *     and what the user still has to do.
+ *
+ * owner: RStack developed by Richardson Gunde
+ */
+
+import { existsSync } from 'node:fs';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname, join, resolve } from 'node:path';
+import { registerProject } from '../core/tracker/registry.js';
+
+export const FRAMEWORKS = Object.freeze(['pi', 'claude-code', 'operator', 'custom']);
+
+/** Best-effort host framework detection from project signals. */
+export async function detectFramework(projectRoot) {
+  const root = resolve(projectRoot);
+  if (existsSync(join(root, '.claude'))) return 'claude-code';
+  if (existsSync(join(root, 'operator.json')) || existsSync(join(root, 'operator_settings.json'))) return 'operator';
+  const pkgPath = join(root, 'package.json');
+  if (existsSync(pkgPath)) {
+    try {
+      const pkg = JSON.parse(await readFile(pkgPath, 'utf8'));
+      const deps = { ...pkg.dependencies, ...pkg.devDependencies, ...pkg.peerDependencies };
+      if (deps['@earendil-works/pi-coding-agent'] || deps['@earendil-works/pi-ai'] || pkg.pi) return 'pi';
+    } catch { /* unreadable package.json — fall through */ }
+  }
+  return 'custom';
+}
+
+async function ensureStateDir(projectRoot, report) {
+  const stateDir = join(projectRoot, '.rstack');
+  if (existsSync(stateDir)) {
+    report.skipped.push('.rstack/ (already exists)');
+  } else {
+    await mkdir(join(stateDir, 'runs'), { recursive: true });
+    report.created.push('.rstack/');
+  }
+}
+
+async function writeIfMissing(filePath, content, label, report) {
+  if (existsSync(filePath)) {
+    report.skipped.push(`${label} (already exists)`);
+    return false;
+  }
+  await mkdir(dirname(filePath), { recursive: true });
+  await writeFile(filePath, content);
+  report.created.push(label);
+  return true;
+}
+
+const ENV_HINTS = [
+  'RSTACK_SLACK_WEBHOOK   — webhook URL for Slack / Teams / Discord notifications',
+  'RSTACK_BUSINESS_PORT   — Business Hub dashboard port (default 3008)',
+  'RSTACK_DEFAULT_MODEL   — model for delegated builder agents',
+  'RSTACK_ESCALATED_MODEL — model used when a task needs attempt >= 2',
+];
+
+export async function initFramework(projectRoot, framework, { packageRoot } = {}) {
+  const root = resolve(projectRoot);
+  const fw = framework ?? await detectFramework(root);
+  if (!FRAMEWORKS.includes(fw)) {
+    throw new Error(`Unknown framework "${fw}". Expected one of: ${FRAMEWORKS.join(', ')}`);
+  }
+
+  const report = { framework: fw, projectRoot: root, created: [], skipped: [], nextSteps: [] };
+  await ensureStateDir(root, report);
+  await registerProject(root);
+  report.created.push('project registered for Business Hub multi-project observation');
+
+  if (fw === 'pi') {
+    report.nextSteps.push(
+      'Install the package in this project: npm install rstack-agents',
+      'Pi auto-loads the SDLC extension from the package (pi.extensions in its package.json) — no wiring needed.',
+      'Start a run from any Pi session: sdlc_start { goal: "..." }',
+      'Open the dashboard: npx rstack-business',
+    );
+  }
+
+  if (fw === 'claude-code') {
+    const docPath = join(root, '.claude', 'rstack-sdlc.md');
+    await writeIfMissing(docPath, CLAUDE_CODE_DOC, '.claude/rstack-sdlc.md', report);
+    report.nextSteps.push(
+      'Install the Claude Code plugin: /plugin install sdlc-automation (or add the marketplace repo)',
+      'Run /sdlc-start in Claude Code to drive the full pipeline',
+      'Open the dashboard: npx rstack-business',
+    );
+  }
+
+  if (fw === 'operator') {
+    const settingsPath = join(root, 'rstack-operator.example.json');
+    const example = JSON.stringify({
+      extensions: {
+        list: [{
+          path: packageRoot ? join(packageRoot, 'extensions', 'rstack_sdlc.py') : 'node_modules/rstack-agents/extensions/rstack_sdlc.py',
+          settings: {
+            worker_command: '',
+            default_model: '',
+            escalated_model: '',
+            slack_webhook: '',
+          },
+        }],
+      },
+    }, null, 2) + '\n';
+    await writeIfMissing(settingsPath, example, 'rstack-operator.example.json', report);
+    report.nextSteps.push(
+      'Install the package: npm install rstack-agents (the Python adapter shells out to its Node bridge)',
+      'Merge rstack-operator.example.json into your Operator settings.json extensions list',
+      'Requirements on this host: node + npx on PATH, npm install run once in the package directory',
+      'Open the dashboard: npx rstack-business',
+    );
+  }
+
+  if (fw === 'custom') {
+    report.nextSteps.push(
+      'RStack state lives in .rstack/ — any agent framework that writes the run contract can plug in.',
+      'Adapter contract: read docs/integrations/custom.md in the rstack-agents package.',
+      'Reuse the Node bridge for tool calls: npx tsx node_modules/rstack-agents/bin/rstack-operator-bridge.ts <tool> \'<json>\'',
+      'Open the dashboard: npx rstack-business',
+    );
+  }
+
+  report.nextSteps.push('Optional environment configuration:', ...ENV_HINTS.map((hint) => `  ${hint}`));
+  return report;
+}
+
+const CLAUDE_CODE_DOC = `# RStack SDLC — Claude Code integration
+
+<!-- owner: RStack developed by Richardson Gunde -->
+
+This project uses RStack for governed SDLC runs. State lives in \`.rstack/\`.
+
+## Commands (via the sdlc-automation plugin)
+
+- \`/sdlc-start\` — start the full pipeline (interactive)
+- \`/sdlc-status\` — which agents completed, which are pending
+- \`/sdlc-resume\` — resume from a specific agent
+- \`/sdlc-agent <name>\` — run one SDLC agent in isolation
+
+## Dashboard
+
+\`npx rstack-business\` opens the Business Hub on :3008 — run timelines,
+stage durations, approvals, alerts, and traceability for every run.
+`;
