@@ -3,6 +3,7 @@ import { readFile, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { CANONICAL_SDLC_STAGES } from '../../../core/harness/stages.js';
 import { deriveRunTimeline, deriveRunTotals, deriveStageElapsed } from '../../metrics/derive.js';
+import { stageReportIndex } from './stage-reports.js';
 import { readJson, readJsonlSync } from './files.js';
 
 // owner: RStack developed by Richardson Gunde
@@ -167,6 +168,7 @@ export async function getRunsForRoot(projectRoot) {
       evidence,
       approvals: Array.isArray(runApprovals) ? runApprovals : [],
       artifactIndex: await indexArtifacts(runDir),
+      stageReports: await stageReportIndex(runDir),
       activityTimeline: buildActivityTimeline(events),
       timeline: deriveRunTimeline(events, rawTasks),
       totals: deriveRunTotals(events),
