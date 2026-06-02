@@ -1447,25 +1447,31 @@ export default function (pi: ExtensionAPI) {
         status: status === "PASS" ? "PASS" : "FAIL",
         evidence: `${task.output_dir}/validation.json`,
       });
-      try {
-        const payload = formatSlackStageMessage(manifest.run_id, task.id, status, {
-          message: status === "PASS"
-            ? `Task validated and advance targets committed. Summary: "${builderContract?.summary || "No summary recorded"}"`
-            : `Harness validation check failed for ${task.id}. Rerouting task to Builder Sandbox for corrections.`,
-          attempt: builderContract?.attempt || "1",
-        });
-        await sendSlackNotification(process.env.RSTACK_SLACK_WEBHOOK, payload);
+      // Only build/send notification payloads when a webhook is configured —
+      // buildRunReport reads the full event stream + every task dir, which is
+      // wasted I/O on every validation otherwise (and the unconfigured path
+      // dumps whole payloads to the console).
+      if (process.env.RSTACK_SLACK_WEBHOOK) {
+        try {
+          const payload = formatSlackStageMessage(manifest.run_id, task.id, status, {
+            message: status === "PASS"
+              ? `Task validated and advance targets committed. Summary: "${builderContract?.summary || "No summary recorded"}"`
+              : `Harness validation check failed for ${task.id}. Rerouting task to Builder Sandbox for corrections.`,
+            attempt: builderContract?.attempt || "1",
+          });
+          await sendSlackNotification(process.env.RSTACK_SLACK_WEBHOOK, payload);
 
-        // Dispatch rich task execution report
-        const runDir = join(runsDir(projectRoot), manifest.run_id);
-        const report = await buildRunReport(runDir);
-        const trace = report.tasks[task.id];
-        if (trace) {
-          const reportPayload = formatSlackTaskReportMessage(manifest.run_id, task.id, trace);
-          await sendSlackNotification(process.env.RSTACK_SLACK_WEBHOOK, reportPayload);
+          // Dispatch rich task execution report
+          const runDir = join(runsDir(projectRoot), manifest.run_id);
+          const report = await buildRunReport(runDir);
+          const trace = report.tasks[task.id];
+          if (trace) {
+            const reportPayload = formatSlackTaskReportMessage(manifest.run_id, task.id, trace);
+            await sendSlackNotification(process.env.RSTACK_SLACK_WEBHOOK, reportPayload);
+          }
+        } catch (err) {
+          console.error("Failed to send Slack validation notification:", err);
         }
-      } catch (err) {
-        console.error("Failed to send Slack validation notification:", err);
       }
       try {
         const registry = await loadRegistry(projectRoot);
