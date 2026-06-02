@@ -220,7 +220,7 @@ Type-check the Pi adapter:
 ```bash
 npx tsc --noEmit --allowImportingTsExtensions --module NodeNext \
   --moduleResolution NodeNext --target ES2022 --skipLibCheck \
-  extensions/rstack-sdlc.ts
+  src/integrations/pi/rstack-sdlc.ts
 ```
 
 </details>
@@ -438,15 +438,16 @@ Asset mode means the host agent reads RStack's Markdown/JSON operating assets an
 | `skills/` | Reusable workflow instructions |
 | `prompts/` | Prompt templates and slash commands |
 | `plugins/` | Domain packs with manifests, agents, skills, and commands |
-| `extensions/rstack-sdlc.ts` | Pi native adapter |
-| `extensions/rstack_sdlc.py` | Operator native adapter |
+| `src/integrations/pi/rstack-sdlc.ts` | Pi native adapter (`extensions/rstack-sdlc.ts` is a compat shim) |
+| `src/integrations/operator/rstack_sdlc.py` | Operator native adapter (`extensions/rstack_sdlc.py` is a compat shim) |
 | `bin/rstack-operator-bridge.ts` | Operator Python to Node bridge |
-| `src/dashboard/` | Unified RStack Business Hub server and UI on `:3008` |
-| `src/harness/approval-queue.js` | Human-in-loop persistence |
-| `src/harness/alert-engine.js` | Threshold alerts and summaries |
-| `src/harness/memory.js` | Episodic memory and retrieval |
-| `src/harness/guardrails.js` | Attempt, tool call, and cost limits |
-| `src/harness/contracts.js` | Builder and validator contract validation |
+| `src/core/harness/` | SDLC runtime — stages, contracts, evidence, guardrails, run-state |
+| `src/core/tracker/` | Project registry and human-in-loop approval queue |
+| `src/observability/dashboard/` | Unified RStack Business Hub server and UI on `:3008` |
+| `src/observability/collectors/` | Run reporter and legacy dashboard helpers |
+| `src/observability/alerts/` | Threshold alerts and plain-language summaries |
+| `src/memory/` | Episodic memory, retrieval, and diagnostics |
+| `src/notifications/` | Slack / Teams / Discord webhook delivery |
 
 ---
 
@@ -676,7 +677,7 @@ npm run lint && npm test && npm run validate && npm pack --dry-run
 
 ```bash
 git status --short
-git add README.md eslint.config.js src/harness/business-observer.js src/harness/dashboard.js src/harness/memory-diagnostics.js src/harness/memory.js src/harness/observer.js src/harness/run-state.js
+git add <changed files>
 git commit -m "docs: refresh install and release guidance"
 git push -u origin docs/readme-command-center-release
 gh pr create --fill --base main --head docs/readme-command-center-release

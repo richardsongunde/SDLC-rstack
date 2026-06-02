@@ -4,8 +4,8 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildFullState } from '../src/dashboard/state/index.js';
-import { dashboardHtml } from '../src/dashboard/ui.js';
+import { buildFullState } from '../src/observability/dashboard/state/index.js';
+import { dashboardHtml } from '../src/observability/dashboard/ui.js';
 
 async function writeJson(filePath, value) {
   await writeFile(filePath, JSON.stringify(value, null, 2));

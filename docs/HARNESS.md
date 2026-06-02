@@ -6,7 +6,7 @@ The RStack Harness is the reliability layer around the agents, skills, prompts, 
 
 ## Canonical SDLC stages
 
-The canonical 15-stage SDLC pipeline lives in `src/harness/stages.js`:
+The canonical 15-stage SDLC pipeline lives in `src/core/harness/stages.js`:
 
 ```text
 00-environment
@@ -51,7 +51,7 @@ Root artifacts such as `artifacts/requirements.json` remain compatibility output
 
 ## Contract checks
 
-Builder contracts are validated by `src/harness/contracts.js` and require:
+Builder contracts are validated by `src/core/harness/contracts.js` and require:
 
 ```text
 task_id, agent, status, summary, files_modified, tests_run, risks, next_steps
@@ -73,11 +73,11 @@ Raw runtime events are appended to `events.jsonl`. Validator-grounded task evide
 {"task_id":"004-implementation","kind":"validation","status":"PASS","evidence":"tasks/004-implementation/validation.json"}
 ```
 
-`src/harness/evidence.js` rejects missing `task_id`, `kind`, `status`, or `evidence` fields.
+`src/core/harness/evidence.js` rejects missing `task_id`, `kind`, `status`, or `evidence` fields.
 
 ## Agent episodic memory
 
-Validator-approved tasks are written to an agent/stage scoped episodic memory store by `src/harness/memory.js`.
+Validator-approved tasks are written to an agent/stage scoped episodic memory store by `src/memory/index.js`.
 
 Default storage is configurable and resolves to:
 
@@ -135,7 +135,7 @@ This is the context-reduction path. Later agents receive durable decisions, evid
 
 ## Guardrails
 
-Guardrail defaults live in `src/harness/guardrails.js`:
+Guardrail defaults live in `src/core/harness/guardrails.js`:
 
 - `maxTaskAttempts: 2`
 - `maxDestructiveTaskAttempts: 1`
