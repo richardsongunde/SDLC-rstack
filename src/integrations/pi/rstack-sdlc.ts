@@ -664,6 +664,33 @@ function requiredApprovalsForTask(taskId: string): string[] {
   return ["plan.md"];
 }
 
+type RunPolicy = {
+  required_approvals?: Record<string, string[]>;
+  enforce_in_express?: boolean;
+};
+
+// .rstack/policy.json — the team's approval policy. required_approvals entries
+// (exact task id → artifacts) are enforced in EVERY mode, so "no dev change
+// ships without manager approval" survives express runs. enforce_in_express
+// additionally applies the default interactive gates to express mode.
+async function readRunPolicy(projectRoot: string): Promise<RunPolicy> {
+  const path = join(projectRoot, ".rstack", "policy.json");
+  if (!existsSync(path)) return {};
+  try {
+    const parsed = JSON.parse(await readFile(path, "utf8"));
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+async function effectiveRequiredApprovals(projectRoot: string, manifest: RunManifest, taskId: string): Promise<string[]> {
+  const policy = await readRunPolicy(projectRoot);
+  const defaults = manifest.mode === "express" && !policy.enforce_in_express ? [] : requiredApprovalsForTask(taskId);
+  const policyRequired = policy.required_approvals?.[taskId] ?? [];
+  return [...new Set([...defaults, ...policyRequired])];
+}
+
 function missingApprovals(approvals: ApprovalRecord[], required: string[]): string[] {
   const approved = approvedArtifacts(approvals);
   return required.filter((artifact) => !approved.has(artifact));
@@ -1305,10 +1332,20 @@ export default function (pi: ExtensionAPI) {
       const task = taskState.tasks.find((t: any) => t.status === "PENDING" || t.status === "READY") || taskState.tasks.find((t: any) => t.status === "FAIL");
       if (!task) return { content: [{ type: "text", text: `No pending task for ${manifest.run_id}. Run sdlc_status or sdlc_validate for final checks.` }], details: taskState };
       const runDir = join(runsDir(projectRoot), manifest.run_id);
-      const requiredApprovals = manifest.mode === "express" ? [] : requiredApprovalsForTask(task.id);
+      const requiredApprovals = await effectiveRequiredApprovals(projectRoot, manifest, task.id);
       const missing = missingApprovals(await readApprovals(runDir), requiredApprovals);
       if (missing.length) {
         await appendEvent(projectRoot, manifest.run_id, { type: "approval_gate_blocked", task_id: task.id, missing });
+        // Page the manager the moment a gate blocks — silence here meant
+        // blocked work waited until someone happened to open the dashboard.
+        try {
+          const payload = formatSlackStageMessage(manifest.run_id, task.id, "APPROVAL_PENDING", {
+            message: `Approval gate blocked ${task.id}. Missing approval(s): ${missing.join(", ")}. Approve from the Business Hub or via sdlc_approve.`,
+          });
+          await notifyAll(payload, { projectRoot });
+        } catch (err) {
+          console.error("Failed to send approval-gate notification:", err);
+        }
         return {
           content: [{ type: "text", text: `Approval gate blocked ${task.id}. Missing approval(s): ${missing.join(", ")}\nUse sdlc_approve after human review, or start/run in express mode for lightweight tasks.` }],
           details: { run_id: manifest.run_id, task, missing_approvals: missing, required_approvals: requiredApprovals }
@@ -1616,7 +1653,7 @@ export default function (pi: ExtensionAPI) {
       const next = tasks.find((t: any) => ["PENDING", "READY", "FAIL", "IN_PROGRESS"].includes(t.status));
       const runDir = join(runsDir(projectRoot), manifest.run_id);
       const approvals = await readApprovals(runDir);
-      const nextMissingApprovals = next && next.status !== "IN_PROGRESS" && manifest.mode !== "express" ? missingApprovals(approvals, requiredApprovalsForTask(next.id)) : [];
+      const nextMissingApprovals = next && next.status !== "IN_PROGRESS" ? missingApprovals(approvals, await effectiveRequiredApprovals(projectRoot, manifest, next.id)) : [];
       const releaseMissingApprovals = manifest.mode !== "express" ? missingApprovals(approvals, ["plan.md", "requirements.json", "architecture.md", "release-readiness.json"]) : [];
       if (tasks.length > 0 && !next && tasks.every((t: any) => t.status === "PASS") && releaseMissingApprovals.length === 0) {
         manifest.status = "DONE";
