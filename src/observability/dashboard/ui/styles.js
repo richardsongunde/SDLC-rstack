@@ -1042,4 +1042,62 @@ tr.clickable:hover td { background: #f8fbff; }
 .presence-dot.live { background: var(--green); animation: presence-pulse 1.8s ease-in-out infinite; }
 @keyframes presence-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(21, 128, 61, 0.4); } 50% { box-shadow: 0 0 0 5px rgba(21, 128, 61, 0); } }
 @media (max-width: 900px) { .tb-scope { display: none; } }
+
+/* ── Studio: Jarvis-style agent workspace (v8 palette: amber/green/blue) ──── */
+.studio-orchestrator { margin-bottom: 16px; }
+.studio-manager { display: flex; align-items: center; gap: 16px; padding: 6px 4px; }
+.studio-manager-avatar {
+  width: 46px; height: 46px; border-radius: 10px; background: var(--ink);
+  display: flex; align-items: center; justify-content: center; flex: none;
+}
+.studio-visor {
+  display: block; width: 26px; height: 7px; border-radius: 3px; background: #b45309;
+  opacity: 0.5;
+}
+.studio-visor.live { background: #d97706; opacity: 1; animation: visor-breathe 2s ease-in-out infinite; box-shadow: 0 0 10px 2px rgba(217, 119, 6, 0.55); }
+@keyframes visor-breathe { 0%, 100% { box-shadow: 0 0 10px 2px rgba(217, 119, 6, 0.55); } 50% { box-shadow: 0 0 16px 5px rgba(217, 119, 6, 0.25); } }
+.studio-manager-text { min-width: 0; flex: 1; }
+.studio-manager-name { font-weight: 800; font-size: 12px; letter-spacing: 0.12em; }
+.studio-run-label { color: var(--muted); font-weight: 400; letter-spacing: 0; margin-left: 8px; font-size: 11px; }
+.studio-narration { color: var(--muted); font-size: 12px; margin-top: 4px; min-height: 16px; }
+.studio-hud { display: flex; gap: 18px; flex: none; }
+.studio-hud div { text-align: right; }
+.studio-hud span { display: block; font-weight: 800; font-size: 16px; }
+.studio-hud label { font-size: 10px; color: var(--faint); letter-spacing: 0.08em; text-transform: uppercase; }
+
+.studio-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.workstation {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: 12px; cursor: pointer; position: relative; min-height: 118px;
+  border-top: 3px solid var(--line-strong);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.workstation:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(16, 24, 40, 0.08); }
+.workstation.selected { outline: 2px solid var(--ink); }
+.workstation .ws-head { display: flex; justify-content: space-between; align-items: center; }
+.workstation .ws-id { font-size: 11px; color: var(--faint); font-weight: 700; }
+.workstation .ws-status-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line-strong); }
+.workstation .ws-business { font-weight: 700; font-size: 13px; margin-top: 6px; }
+.workstation .ws-persona { font-size: 10px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; margin-top: 2px; }
+.workstation .ws-badge { font-size: 10px; margin-top: 8px; letter-spacing: 0.08em; }
+.workstation .ws-voice { font-size: 11px; color: var(--muted); margin-top: 6px; font-style: italic; line-height: 1.4; }
+
+.workstation.running { border-top-color: #d97706; background: #fffbeb; }
+.workstation.running .ws-status-dot { background: #d97706; animation: ws-breathe 1.6s ease-in-out infinite; }
+.workstation.running .ws-badge { color: #b45309; }
+@keyframes ws-breathe { 0%, 100% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.5); } 50% { box-shadow: 0 0 0 6px rgba(217, 119, 6, 0); } }
+.workstation.done { border-top-color: #16a34a; }
+.workstation.done .ws-status-dot { background: #16a34a; }
+.workstation.done .ws-badge { color: #15803d; }
+.workstation.fail { border-top-color: #dc2626; background: #fef2f2; }
+.workstation.fail .ws-status-dot { background: #dc2626; }
+.workstation.fail .ws-badge { color: #b91c1c; }
+.workstation.queued .ws-badge { color: #2563eb; }
+.workstation.queued .ws-status-dot { background: #2563eb; opacity: 0.5; }
+
+.studio-inspector { margin-top: 14px; }
+.studio-inspector .panel-head { display: flex; justify-content: space-between; align-items: center; }
+
+@media (max-width: 1100px) { .studio-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .studio-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .studio-hud { display: none; } }
 `;

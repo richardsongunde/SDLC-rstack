@@ -2,6 +2,7 @@
 
 export const pages = [
   ['command', '00', 'Command Center', 'Observe'],
+  ['studio', '12', 'Studio', 'Observe'],
   ['workflow', '01', 'Workflow Map', 'Observe'],
   ['projects', '02', 'Projects & Runs', 'Observe'],
   ['run-analytics', '10', 'Run Analytics', 'Observe'],
@@ -91,6 +92,20 @@ function pageBody(id) {
         <div class="panel-head"><span class="panel-title">Recent Live Activity</span><span class="panel-note" id="command-feed-count"></span></div>
         <div class="panel-body"><div class="feed-list command-feed-list" id="command-feed"></div></div>
       </div>
+    `,
+    studio: `
+      <div class="studio-orchestrator panel">
+        <div class="studio-manager">
+          <div class="studio-manager-avatar"><span class="studio-visor" id="studio-visor"></span></div>
+          <div class="studio-manager-text">
+            <div class="studio-manager-name">THE MANAGER <span class="studio-run-label mono" id="studio-run-label"></span></div>
+            <div class="studio-narration mono" id="studio-narration">Waiting for the studio to wake up…</div>
+          </div>
+          <div class="studio-hud" id="studio-hud"></div>
+        </div>
+      </div>
+      <div class="studio-grid" id="studio-grid"></div>
+      <div class="panel studio-inspector" id="studio-inspector" style="display:none"></div>
     `,
     workflow: `
       <div class="workflow-studio">
