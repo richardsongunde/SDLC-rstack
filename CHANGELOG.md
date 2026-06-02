@@ -5,6 +5,17 @@
 All notable changes to RStack are documented here. Entries are user-focused:
 what you can now do that you couldn't before.
 
+## [1.5.0] - 2026-06-02
+
+### Added
+- **The Studio.** A Jarvis-style live view of your agent team: all 15 SDLC
+  stages as workstations with personas you recognize ("Senior Developer —
+  Build the Software"), status as breathing glow — amber means working right
+  now, green done, blue queued, red needs review. The Manager narrates the
+  latest progress as it happens, and each agent "reports in" with what it
+  just did. Click any workstation to get that agent's full report and jump
+  into the run.
+
 ## [1.4.0] - 2026-06-02
 
 ### Added
