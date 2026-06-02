@@ -28,7 +28,7 @@ export function buildActivityTimeline(events) {
     }
     const m = minutes[min];
     if (ev.type === 'tool_call') m.toolCalls++;
-    if (ev.type === 'stage_completed') m.stagesDone.push(ev.stage_id ?? '');
+    if (ev.type === 'stage_completed' && ev.stage_id) m.stagesDone.push(ev.stage_id);
     if (ev.type === 'task_validated' && ev.status === 'PASS') m.tasksPassed++;
     if (ev.type === 'task_validated' && ev.status === 'FAIL') m.tasksFailed++;
     if (ev.type === 'guardrail_triggered' || ev.type === 'approval_gate_blocked') m.guardrails++;

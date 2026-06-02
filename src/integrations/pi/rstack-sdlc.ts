@@ -1378,15 +1378,43 @@ export default function (pi: ExtensionAPI) {
       }
       await appendEvent(projectRoot, manifest.run_id, { type: "quality_score_recorded", task_id: task.id, score: qualityScore, pass_checks: passChecks, total_checks: checks.length });
       if (status === "PASS") {
-        await appendEvent(projectRoot, manifest.run_id, { type: "stage_completed", stage_id: task.id, task_id: task.id, elapsed_ms: elapsedMs });
-        try {
-          const runDir = join(runsDir(projectRoot), manifest.run_id);
-          const checkpointSaved = await createStageCheckpoint(runDir, task.id);
-          if (checkpointSaved) {
-            await appendEvent(projectRoot, manifest.run_id, { type: "stage_checkpoint_saved", stage_id: task.id });
+        // Attribute completion to the task's canonical stage(s). Task ids (e.g.
+        // "007-documentation") are plan ids, not canonical stage ids — consumers
+        // (reporter stage aggregation, alerts, stage matrix) key by canonical stage.
+        const canonicalStageIds = [...new Set(
+          (task.stage_artifacts ?? [])
+            .map((artifact: any) => artifact?.stage_id)
+            .filter((id: any) => typeof id === "string" && getCanonicalStage(id)),
+        )];
+        if (canonicalStageIds.length === 0 && getCanonicalStage(task.id)) canonicalStageIds.push(task.id);
+        if (canonicalStageIds.length === 0) {
+          // No canonical mapping — keep the timing signal but never invent a stage id.
+          await appendEvent(projectRoot, manifest.run_id, { type: "stage_completed", stage_id: null, task_id: task.id, elapsed_ms: elapsedMs });
+        }
+        for (const stageId of canonicalStageIds) {
+          await appendEvent(projectRoot, manifest.run_id, {
+            type: "stage_completed",
+            stage_id: stageId,
+            task_id: task.id,
+            elapsed_ms: elapsedMs,
+            // Multi-stage tasks emit one event per stage with the same task elapsed;
+            // consumers can normalize with this count.
+            stages_in_task: canonicalStageIds.length,
+          });
+        }
+        // Checkpoint each canonical stage the task produced. createStageCheckpoint
+        // requires a canonical stage id — passing task.id threw on every plan task,
+        // so no checkpoint was ever saved and sdlc_rollback had nothing to restore.
+        for (const stageId of canonicalStageIds) {
+          try {
+            const runDir = join(runsDir(projectRoot), manifest.run_id);
+            const checkpointSaved = await createStageCheckpoint(runDir, stageId);
+            if (checkpointSaved) {
+              await appendEvent(projectRoot, manifest.run_id, { type: "stage_checkpoint_saved", stage_id: stageId, task_id: task.id });
+            }
+          } catch (cpError) {
+            console.error(`Failed to save stage checkpoint for ${stageId}:`, cpError);
           }
-        } catch (cpError) {
-          console.error("Failed to save stage checkpoint:", cpError);
         }
       } else {
         const runDir = join(runsDir(projectRoot), manifest.run_id);
@@ -1427,7 +1455,7 @@ export default function (pi: ExtensionAPI) {
           attempt: builderContract?.attempt || "1",
         });
         await sendSlackNotification(process.env.RSTACK_SLACK_WEBHOOK, payload);
-        
+
         // Dispatch rich task execution report
         const runDir = join(runsDir(projectRoot), manifest.run_id);
         const report = await buildRunReport(runDir);
