@@ -5,9 +5,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
 
-const REPO_ROOT = path.resolve(import.meta.dirname, '..');
+const REPO_ROOT = path.resolve(fileURLToPath(import.meta.url), '..', '..');
 
 test('rstack Pi extension imports successfully', async () => {
   const mod = await import(path.join(REPO_ROOT, 'extensions', 'rstack-sdlc.ts'));

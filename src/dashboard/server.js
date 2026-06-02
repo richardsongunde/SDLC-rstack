@@ -112,22 +112,46 @@ async function broadcastSnapshot() {
 
 async function handleApproval(req, res, decision) {
   let body = '';
+  req.on('error', () => {
+    if (!res.headersSent) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: false, error: 'request stream error' }));
+    }
+  });
   req.on('data', (chunk) => { body += chunk; });
   req.on('end', async () => {
-    const { id, resolvedBy } = safeJson(body) ?? {};
-    const ok = await resolveDashboardApproval(PROJECT_ROOT, id, decision, resolvedBy ?? 'dashboard');
-    res.writeHead(ok ? 200 : 404, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok }));
-    if (ok) await broadcastSnapshot();
+    try {
+      const { id, resolvedBy } = safeJson(body) ?? {};
+      if (!id) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: 'missing approval id' }));
+        return;
+      }
+      const ok = await resolveDashboardApproval(PROJECT_ROOT, id, decision, resolvedBy ?? 'dashboard');
+      res.writeHead(ok ? 200 : 404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok }));
+      if (ok) await broadcastSnapshot();
+    } catch (err) {
+      process.stderr.write(`[rstack-business] approval error: ${err?.message}\n`);
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: String(err?.message) }));
+      }
+    }
   });
 }
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
 
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  // CORS: only reflect localhost origins — a wildcard would let any website
+  // a browser visits silently read the full SDLC state from this port.
+  const origin = req.headers.origin;
+  if (origin && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  }
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204);
