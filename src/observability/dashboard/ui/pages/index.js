@@ -7,6 +7,7 @@ export const pages = [
   ['run-analytics', '10', 'Run Analytics', 'Observe'],
   ['agent-work', '03', 'Agent Work', 'Observe'],
   ['live-feed', '04', 'Live Feed', 'Observe'],
+  ['team', '11', 'Team & Presence', 'Observe'],
   ['approvals', '05', 'Approvals', 'Manage'],
   ['alerts-guardrails', '06', 'Alerts & Guardrails', 'Manage'],
   ['traceability', '07', 'Traceability', 'Explore'],
@@ -148,6 +149,26 @@ function pageBody(id) {
     `,
     'agent-work': '<div class="panel"><div class="panel-head"><span class="panel-title">Agent Work by Run</span><span class="panel-note" id="agent-work-count"></span></div><div class="panel-body" id="agent-work-list"></div></div>',
     'live-feed': '<div class="panel"><div class="panel-head"><span class="panel-title">Event Stream</span><span class="panel-note" id="live-feed-count"></span></div><div class="panel-body"><div class="feed-list" id="live-feed-list"></div></div></div>',
+    team: `
+      <div class="panel">
+        <div class="panel-head"><span class="panel-title">Live Now</span><span class="panel-note" id="team-live-count"></span></div>
+        <div class="panel-body"><div class="stack-list" id="team-live"></div></div>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-head"><span class="panel-title">People</span><span class="panel-note" id="team-people-count"></span></div>
+          <div class="table-wrap"><table><thead><tr><th>Person</th><th>Runs</th><th>Approvals</th><th>Guidance</th><th>Last seen</th></tr></thead><tbody id="team-people-table"></tbody></table></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><span class="panel-title">Manager View — Projects</span><span class="panel-note" id="team-manager-count"></span></div>
+          <div class="table-wrap"><table><thead><tr><th>Project</th><th>Runs</th><th>Avg duration</th><th>Pass rate</th><th>Pending gates</th></tr></thead><tbody id="team-manager-table"></tbody></table></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><span class="panel-title">Human Guidance Log</span><span class="panel-note" id="team-guidance-count"></span></div>
+        <div class="panel-body"><div class="stack-list" id="team-guidance"></div></div>
+      </div>
+    `,
     approvals: '<div class="grid-2"><div class="panel"><div class="panel-head"><span class="panel-title">Actionable Queue</span><span class="panel-note" id="approvals-count"></span></div><div class="panel-body"><div class="stack-list" id="approvals-list"></div></div></div><div class="panel"><div class="panel-head"><span class="panel-title">Resolved</span></div><div class="panel-body"><div class="stack-list" id="approvals-resolved"></div></div></div></div>',
     'alerts-guardrails': '<div class="grid-2"><div class="panel"><div class="panel-head"><span class="panel-title">Alerts</span><span class="panel-note" id="alerts-count"></span></div><div class="panel-body"><div class="stack-list" id="alerts-list"></div></div></div><div class="panel"><div class="panel-head"><span class="panel-title">Blocked Gates</span><span class="panel-note" id="blocked-count"></span></div><div class="panel-body"><div class="stack-list" id="blocked-list"></div></div></div></div>',
     traceability: '<div id="traceability-list"></div>',

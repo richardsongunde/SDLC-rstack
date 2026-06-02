@@ -121,8 +121,12 @@ export function plainLanguageSummary(event) {
       return `Approval gate: ${event.artifact ?? 'artifact'} — ${event.status ?? 'APPROVED'}`;
     case 'approval_gate_blocked':
       return `Approval required — missing: ${(event.missing ?? []).join(', ') || (event.reason ?? 'action blocked')}`;
-    case 'clarification_answers_added':
-      return `${event.count ?? ''} clarification answer${event.count !== 1 ? 's' : ''} added`;
+    case 'clarification_answers_added': {
+      const who = event.answered_by ? ` by ${event.answered_by}` : '';
+      const preview = Array.isArray(event.answers) && event.answers.length
+        ? ` — "${String(event.answers[0]).slice(0, 80)}"` : '';
+      return `${event.count ?? ''} clarification answer${event.count !== 1 ? 's' : ''} added${who}${preview}`;
+    }
     case 'task_started':
       return `Started task — ${event.task_id ?? 'unknown'}`;
     case 'builder_task_prepared':

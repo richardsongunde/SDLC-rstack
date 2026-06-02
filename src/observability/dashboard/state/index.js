@@ -10,6 +10,7 @@ import { buildTraceMap } from './traceability.js';
 import { buildProjectSummaries } from './projects.js';
 import { buildDiagnostics, buildLayerSummaries } from './layers.js';
 import { buildStageTrends } from '../../metrics/derive.js';
+import { buildPeople, buildPresence } from './people.js';
 export { toClientState } from './client-state.js';
 export { resolveApprovalAcrossRoots } from './approvals.js';
 
@@ -39,6 +40,8 @@ export async function buildFullState(projectRoot, options = {}) {
   const projectSummaries = buildProjectSummaries(runs, roots);
   const traceMap = await buildTraceMap(runs, projectRoot);
   const trends = buildStageTrends(runs);
+  const people = buildPeople(runs);
+  const presence = buildPresence(runs);
 
   const alertInputs = {
     runs,
@@ -73,6 +76,8 @@ export async function buildFullState(projectRoot, options = {}) {
     agentGroups,
     projectSummaries,
     trends,
+    people,
+    presence,
     diagnostics: buildDiagnostics(runs, roots),
     ts: new Date().toISOString(),
   };

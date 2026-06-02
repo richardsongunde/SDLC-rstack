@@ -150,6 +150,7 @@ var PAGE_SUBS = {
   workflow: 'The canonical SDLC flow, grouped by stage with pass, fail, active and ready counts from real run tasks.',
   projects: 'All registered project roots and their run sessions, costs, task status and activity timeline.',
   'run-analytics': 'Wall-clock run timelines, per-stage durations and run-over-run delivery trends derived from events.jsonl.',
+  team: 'Who is live and working right now, the people behind every run, approval and guidance, and the manager project rollup.',
   'agent-work': 'Builder and validator work grouped by project, run, stage and agent contract.',
   'live-feed': 'Real-time event stream from events.jsonl plus live WebSocket refreshes.',
   approvals: 'Human-in-loop actions from the approval queue only.',
@@ -177,18 +178,171 @@ function showPage(name) {
 
 function applyState(state) {
   STATE = state;
+  try { notifyNewGates(state); } catch (err) { /* notifications are best-effort */ }
+  try { renderScopeSelectors(state); } catch (err) { showErr('scope: ' + err.message); }
+  var scoped = applyScope(state);
   try { renderFrame(state); } catch (err) { showErr('frame: ' + err.message); }
-  try { renderCommand(state); } catch (err) { showErr('command: ' + err.message); }
-  try { renderWorkflow(state); } catch (err) { showErr('workflow: ' + err.message); }
-  try { renderProjects(state); } catch (err) { showErr('projects: ' + err.message); }
-  try { renderRunAnalytics(state); } catch (err) { showErr('run analytics: ' + err.message); }
-  try { renderAgentWork(state); } catch (err) { showErr('agent work: ' + err.message); }
-  try { renderLiveFeed(state); } catch (err) { showErr('live feed: ' + err.message); }
+  try { renderCommand(scoped); } catch (err) { showErr('command: ' + err.message); }
+  try { renderWorkflow(scoped); } catch (err) { showErr('workflow: ' + err.message); }
+  try { renderProjects(scoped); } catch (err) { showErr('projects: ' + err.message); }
+  try { renderRunAnalytics(scoped); } catch (err) { showErr('run analytics: ' + err.message); }
+  try { renderTeam(scoped); } catch (err) { showErr('team: ' + err.message); }
+  try { renderAgentWork(scoped); } catch (err) { showErr('agent work: ' + err.message); }
+  try { renderLiveFeed(scoped); } catch (err) { showErr('live feed: ' + err.message); }
   try { renderApprovals(state); } catch (err) { showErr('approvals: ' + err.message); }
   try { renderAlertsGuardrails(state); } catch (err) { showErr('alerts: ' + err.message); }
-  try { renderTraceability(state); } catch (err) { showErr('traceability: ' + err.message); }
-  try { renderTeamLayers(state); } catch (err) { showErr('team layers: ' + err.message); }
+  try { renderTraceability(scoped); } catch (err) { showErr('traceability: ' + err.message); }
+  try { renderTeamLayers(scoped); } catch (err) { showErr('team layers: ' + err.message); }
   try { renderDiagnostics(state); } catch (err) { showErr('diagnostics: ' + err.message); }
+}
+
+// ── Global project → run scope (issue #43) ──────────────────────────────────
+var SCOPE = {
+  project: localStorage.getItem('rstack-scope-project') || '',
+  run: localStorage.getItem('rstack-scope-run') || '',
+};
+// Deep link: #run=<runId> wins over stored scope.
+(function initScopeFromHash() {
+  var match = /[#&]run=([^&]+)/.exec(location.hash || '');
+  if (match) { SCOPE.run = decodeURIComponent(match[1]); SCOPE.project = ''; }
+})();
+
+function setScopeProject(value) {
+  SCOPE.project = value;
+  SCOPE.run = '';
+  localStorage.setItem('rstack-scope-project', value);
+  localStorage.setItem('rstack-scope-run', '');
+  if (location.hash) history.replaceState(null, '', location.pathname);
+  if (STATE) applyState(STATE);
+}
+
+function setScopeRun(value) {
+  SCOPE.run = value;
+  localStorage.setItem('rstack-scope-run', value);
+  history.replaceState(null, '', value ? '#run=' + encodeURIComponent(value) : location.pathname);
+  if (STATE) applyState(STATE);
+}
+
+function renderScopeSelectors(s) {
+  var runs = s.runs || [];
+  var projectSelect = document.getElementById('scope-project');
+  var runSelect = document.getElementById('scope-run');
+  if (!projectSelect || !runSelect) return;
+  var roots = [];
+  runs.forEach(function(run) { if (run.projectRoot && roots.indexOf(run.projectRoot) === -1) roots.push(run.projectRoot); });
+  projectSelect.innerHTML = '<option value="">All projects</option>' + roots.map(function(root) {
+    return '<option value="' + esc(root) + '"' + (root === SCOPE.project ? ' selected' : '') + '>' + esc(shortName(root)) + '</option>';
+  }).join('');
+  var scopedRuns = SCOPE.project ? runs.filter(function(run) { return run.projectRoot === SCOPE.project; }) : runs;
+  runSelect.innerHTML = '<option value="">All runs</option>' + scopedRuns.map(function(run) {
+    var label = ((run.manifest && run.manifest.goal) || run.runId).slice(0, 60);
+    return '<option value="' + esc(run.runId) + '"' + (run.runId === SCOPE.run ? ' selected' : '') + '>' + esc(label) + '</option>';
+  }).join('');
+}
+
+function applyScope(s) {
+  if (!SCOPE.project && !SCOPE.run) return s;
+  var runs = (s.runs || []).filter(function(run) {
+    if (SCOPE.run) return run.runId === SCOPE.run;
+    return run.projectRoot === SCOPE.project;
+  });
+  var runIds = {};
+  runs.forEach(function(run) { runIds[run.runId] = true; });
+  var copy = {};
+  for (var key in s) copy[key] = s[key];
+  copy.runs = runs;
+  copy.feed = (s.feed || []).filter(function(item) { return !item.runId || runIds[item.runId]; });
+  copy.agentWork = (s.agentWork || []).filter(function(work) { return !work.runId || runIds[work.runId]; });
+  copy.agentGroups = (s.agentGroups || []).filter(function(group) { return !group.runId || runIds[group.runId]; });
+  copy.presence = (s.presence || []).filter(function(item) { return runIds[item.runId]; });
+  copy.trends = s.trends ? {
+    stages: s.trends.stages || {},
+    runs: (s.trends.runs || []).filter(function(row) { return runIds[row.runId]; }),
+  } : s.trends;
+  return copy;
+}
+
+// ── Browser notifications for new approval gates (issue #42) ────────────────
+var SEEN_GATES = null;
+
+function notifyNewGates(s) {
+  var pending = (s.pendingApprovals || []).map(function(item) { return 'p:' + (item.id || item.artifact); });
+  var blocked = (s.blockedGates || []).map(function(gate) { return 'b:' + (gate.id || gate.runId); });
+  var current = pending.concat(blocked);
+  if (SEEN_GATES === null) { SEEN_GATES = current; return; } // first snapshot: baseline only
+  var fresh = current.filter(function(key) { return SEEN_GATES.indexOf(key) === -1; });
+  SEEN_GATES = current;
+  if (!fresh.length || typeof Notification === 'undefined') return;
+  if (Notification.permission === 'default') { Notification.requestPermission(); return; }
+  if (Notification.permission !== 'granted') return;
+  try {
+    new Notification('RStack: approval needed', {
+      body: fresh.length + ' new approval gate(s) waiting. No change ships without sign-off.',
+      tag: 'rstack-approvals',
+    });
+  } catch (err) { /* best-effort */ }
+}
+
+// ── Team & Presence page (issue #42) ────────────────────────────────────────
+function renderTeam(s) {
+  var presence = s.presence || [];
+  var live = presence.filter(function(item) { return item.live; });
+  setText('team-live-count', live.length + ' live / ' + presence.length + ' recent');
+  setHTML('team-live', presence.map(function(item) {
+    var dot = item.live ? '<span class="presence-dot live"></span>' : '<span class="presence-dot"></span>';
+    var task = item.currentTask
+      ? chip((item.currentTask.agent || 'agent') + ' → ' + item.currentTask.title)
+      : '<span class="muted">between tasks</span>';
+    return '<div class="stack-item clickable" data-runid="' + esc(item.runId) + '" onclick="openDrawerRow(this)">' +
+      '<div>' + dot + '<span class="strong">' + esc(item.startedBy) + '</span> <span class="muted">on</span> ' + esc(shortName(item.projectRoot)) + '' +
+      '<div class="muted">' + esc(item.goal) + '</div></div>' +
+      '<div class="metric-row">' + task + '<span class="faint mono">' + fmtAgo(item.secondsAgo) + '</span></div>' +
+    '</div>';
+  }).join('') || emptyHtml('Nobody live right now', 'Runs with events in the last 30 minutes appear here.'));
+
+  var people = s.people || [];
+  setText('team-people-count', people.length + ' people');
+  setHTML('team-people-table', people.map(function(person) {
+    return '<tr>' +
+      '<td><div class="strong">' + esc(person.name) + '</div>' + (person.email ? '<div class="faint mono">' + esc(person.email) + '</div>' : '') + '</td>' +
+      '<td class="mono">' + person.runsStarted + '</td>' +
+      '<td class="mono">' + person.approvals + (person.rejections ? ' <span class="muted">/ ' + person.rejections + ' rejected</span>' : '') + '</td>' +
+      '<td class="mono">' + person.guidance + '</td>' +
+      '<td class="mono muted">' + (person.lastSeen ? fmtTime(person.lastSeen) : '-') + '</td>' +
+    '</tr>';
+  }).join('') || '<tr><td colspan="5" class="empty">No people yet — runs started after the people layer record who did what</td></tr>');
+
+  var projects = s.projectSummaries || [];
+  var blocked = s.blockedGates || [];
+  var runs = s.runs || [];
+  setText('team-manager-count', projects.length + ' projects');
+  setHTML('team-manager-table', projects.map(function(project) {
+    var projectRuns = runs.filter(function(run) { return run.projectRoot === project.projectRoot; });
+    var durations = projectRuns.map(function(run) { return (run.totals || {}).duration_ms || 0; }).filter(Boolean);
+    var avg = durations.length ? durations.reduce(function(sum, ms) { return sum + ms; }, 0) / durations.length : 0;
+    var total = project.passed + project.failed;
+    var rate = total ? Math.round(project.passed / total * 100) : 0;
+    var gates = blocked.filter(function(gate) { return projectRuns.some(function(run) { return run.runId === gate.runId; }); }).length;
+    return '<tr>' +
+      '<td><div class="strong">' + esc(project.name) + '</div></td>' +
+      '<td class="mono">' + project.runs + (project.active ? ' <span class="muted">(' + project.active + ' active)</span>' : '') + '</td>' +
+      '<td class="mono">' + fmtDur(avg) + '</td>' +
+      '<td class="mono">' + rate + '%</td>' +
+      '<td class="mono">' + (gates ? '<span class="strong">' + gates + '</span>' : '0') + '</td>' +
+    '</tr>';
+  }).join('') || '<tr><td colspan="5" class="empty">No projects yet</td></tr>');
+
+  var guidanceFeed = (s.feed || []).filter(function(item) { return item.type === 'clarification_answers_added'; });
+  setText('team-guidance-count', guidanceFeed.length + ' entries');
+  setHTML('team-guidance', guidanceFeed.slice(0, 30).map(feedRowHtml).join('') ||
+    emptyHtml('No guidance recorded yet', 'When a developer answers clarification questions, it shows up here with their name.'));
+}
+
+function fmtAgo(seconds) {
+  if (seconds < 60) return seconds + 's ago';
+  var minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return minutes + 'm ago';
+  return Math.floor(minutes / 60) + 'h ago';
 }
 
 function renderFrame(s) {
