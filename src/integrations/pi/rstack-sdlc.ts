@@ -14,6 +14,7 @@ import { validateBuilderContract } from "../../core/harness/contracts.js";
 import { appendEvidenceEvent } from "../../core/harness/evidence.js";
 import { DEFAULT_HARNESS_GUARDRAILS, guardrailSummary } from "../../core/harness/guardrails.js";
 import { prepareRunState, prepareStageFolders, createStageCheckpoint, rollbackStage, updateRunMetrics } from "../../core/harness/run-state.js";
+import { resolveUserIdentity } from "../../core/harness/identity.js";
 import { appendEpisode, appendLearning, episodeFromValidation, formatEpisodesForPrompt, projectMemoryDir, readMemoryConfig, recallEpisodes, sanitizeMemoryText, searchLearnings, writeRetrievalEvent } from "../../memory/index.js";
 import { buildRunReport, generateRunReport, renderDashboardHtml, renderTraceHtml } from "../../observability/collectors/reporter.js";
 import { notifyAll, hasConfiguredChannels, formatSlackStageMessage, formatSlackTaskReportMessage } from "../../notifications/index.js";
@@ -164,6 +165,7 @@ type RunManifest = {
   project_root: string;
   rstack_version: string;
   traceability_path?: string;
+  started_by?: { name: string; email: string | null };
 };
 
 type ApprovalRecord = {
@@ -1091,7 +1093,7 @@ export default function (pi: ExtensionAPI) {
       artifact: Type.String({ description: "The artifact or stage ID being approved (e.g. 'architecture.md' or '002-requirements')." }),
       status: StringEnum(["APPROVED", "REJECTED"] as const),
       comments: Type.Optional(Type.String()),
-      approver: Type.Optional(Type.String({ default: "human-user" }))
+      approver: Type.Optional(Type.String({ description: "Who approved. Defaults to the resolved user identity (RSTACK_USER or git config), not a generic placeholder." }))
     }),
     async execute(_id, params) {
       const projectRoot = findProjectRoot();
@@ -1110,7 +1112,7 @@ export default function (pi: ExtensionAPI) {
         id: `app-${timestamp().replace(/[:.]/g, "-")}`,
         artifact: params.artifact,
         status: params.status,
-        approver: params.approver || "human-user",
+        approver: params.approver || resolveUserIdentity(projectRoot).name,
         timestamp: timestamp(),
         comments: params.comments
       };
@@ -1161,6 +1163,7 @@ export default function (pi: ExtensionAPI) {
       const dir = join(runsDir(projectRoot), id);
       await prepareRunState(dir);
       await mkdir(memoryDir(projectRoot), { recursive: true });
+      const startedBy = resolveUserIdentity(projectRoot);
       const manifest: RunManifest = {
         run_id: id,
         created_at: timestamp(),
@@ -1170,12 +1173,13 @@ export default function (pi: ExtensionAPI) {
         status: "STARTED",
         project_root: projectRoot,
         rstack_version: RSTACK_VERSION,
+        started_by: startedBy,
       };
       await writeManifest(manifest);
       await mkdir(specsDir(dir), { recursive: true });
       await writeFile(approvalsPath(dir), JSON.stringify([], null, 2));
       await writeFile(join(dir, "context.md"), `# RStack Run Context\n\nGoal: ${params.goal}\n\nMode: ${manifest.mode}\n\n## Product-owner notes\n\n`);
-      await appendEvent(projectRoot, id, { type: "run_started", goal: params.goal });
+      await appendEvent(projectRoot, id, { type: "run_started", goal: params.goal, started_by: startedBy.name });
       try {
         const payload = formatSlackStageMessage(id, "00-environment", "START", {
           message: `RStack Run started for goal: "${params.goal}" in ${manifest.mode} mode.`,
@@ -1211,7 +1215,15 @@ export default function (pi: ExtensionAPI) {
         await appendFile(join(runDir, "context.md"), `\n## Clarification answers (${timestamp()})\n${params.answers.map((answer) => `- ${answer}`).join("\n")}\n`);
         manifest.status = "CLARIFYING";
         await writeManifest(manifest);
-        await appendEvent(projectRoot, manifest.run_id, { type: "clarification_answers_added", count: params.answers.length });
+        // Human guidance is first-class data: record who answered and what they
+        // said, not just a count — the dashboard surfaces this per person.
+        const answeredBy = resolveUserIdentity(projectRoot);
+        await appendEvent(projectRoot, manifest.run_id, {
+          type: "clarification_answers_added",
+          count: params.answers.length,
+          answered_by: answeredBy.name,
+          answers: params.answers.map((answer) => String(answer).slice(0, 500)),
+        });
         return { content: [{ type: "text", text: `Added ${params.answers.length} clarification answer(s) to ${relative(projectRoot, join(runDir, "context.md"))}. Next: call sdlc_plan.` }], details: { manifest, answers: params.answers, questions: [] } };
       }
       manifest.status = "CLARIFYING";
@@ -1304,8 +1316,13 @@ export default function (pi: ExtensionAPI) {
       }
       task.status = "IN_PROGRESS";
       task._started_at = Date.now();
+      // Real attribution: stamp the routed pipeline agent so builder.json and
+      // the dashboard show who actually executed, not a generic "builder".
+      if (!task.agent && Array.isArray(task.pipeline_agents) && task.pipeline_agents.length) {
+        task.agent = task.pipeline_agents[0];
+      }
       await writeFile(tasksPath, JSON.stringify(taskState, null, 2));
-      await appendEvent(projectRoot, manifest.run_id, { type: "task_started", task_id: task.id, ts: new Date().toISOString() });
+      await appendEvent(projectRoot, manifest.run_id, { type: "task_started", task_id: task.id, agent: task.agent ?? null, ts: new Date().toISOString() });
       const selected = registry.filter((item) => task.specialists?.includes(item.id));
       const prompt = await builderPrompt(projectRoot, task, selected, manifest.run_id);
       await writeFile(join(projectRoot, task.output_dir, "prompt.md"), prompt);
