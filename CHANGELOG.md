@@ -5,6 +5,21 @@
 All notable changes to RStack are documented here. Entries are user-focused:
 what you can now do that you couldn't before.
 
+## [1.8.0] - 2026-06-02
+
+### Added
+- **See what your agents actually produced — as infographics.** A new **Run
+  Report** page turns every run's 15 stage deliverables into eye-catching
+  cards: a security threat-severity donut with the release gate, a compliance
+  score gauge, test pass/fail bars, a cost flashcard, requirement and
+  architecture counts, planning milestones, and the open-risk / release-gate
+  summary. Numbers count up, charts fill in, blocked gates pulse.
+- **The Studio 3D agents now report their real work.** Click any agent in the
+  3D studio and its panel shows that stage's infographic — threat counts,
+  compliance score, test results, cost — pulled live from the run.
+- New `GET /api/run-report` endpoint serves a run's parsed stage reports in one
+  sandboxed call.
+
 ## [1.7.1] - 2026-06-02
 
 ### Security
