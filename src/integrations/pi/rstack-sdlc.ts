@@ -368,7 +368,9 @@ function projectPluginDirs(projectRoot = findProjectRoot()): string[] {
   ];
 }
 
-function parseFrontmatter(raw: string): Record<string, string> {
+function parseFrontmatter(rawInput: string): Record<string, string> {
+  // Normalize CRLF/CR so the fence search works on Windows checkouts.
+  const raw = rawInput.replace(/\r\n?/g, "\n");
   if (!raw.startsWith("---")) return {};
   const end = raw.indexOf("\n---", 3);
   if (end === -1) return {};
@@ -753,7 +755,9 @@ function selectRegistry(registry: RegistryItem[], domains: string[], limit = 6):
   return scored.filter((entry) => entry.score > 0).sort((a, b) => b.score - a.score).slice(0, limit).map((entry) => entry.item);
 }
 
-function stripFrontmatter(raw: string): string {
+function stripFrontmatter(rawInput: string): string {
+  // Normalize CRLF/CR so the fence search works on Windows checkouts.
+  const raw = rawInput.replace(/\r\n?/g, "\n");
   if (!raw.startsWith("---")) return raw.trim();
   const end = raw.indexOf("\n---", 3);
   return end === -1 ? raw.trim() : raw.slice(end + 4).trim();

@@ -22,7 +22,7 @@ npx rstack-agents init --profile business-flex
 If `.rstack/` already exists, `init` adopts it and preserves all prior runs — it reports how many it found. To start clean instead, archive the old state (nothing is deleted):
 
 ```bash
-npx rstack-agents init --fresh   # moves runs, approvals, registry, config to .rstack/archive/<timestamp>/
+npx rstack-agents init --fresh   # moves runs, approvals, memory, registry, config, budget to .rstack/archive/<timestamp>/
 ```
 
 Use a smaller or larger business profile when needed:
